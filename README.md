@@ -1,9 +1,9 @@
 # Tasks
 ## タスク1
 期限: 3/20
-- [ ] Raspberry Pi に Raspbian Stretch LITE (※GUI無しです) をインストール。
-- [ ] ホストPCからssh接続。
-- [ ] python3でコンソールにhello world。
+- [x] Raspberry Pi に Raspbian Stretch LITE (※GUI無しです) をインストール。
+- [x] ホストPCからssh接続。
+- [x] python3でコンソールにhello world。
 ## タスク2
 期限: 3/20
 - [ ] python3で5つのI2Cセンサを読み取り、コンソールに表示。
