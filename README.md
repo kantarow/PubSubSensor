@@ -52,6 +52,35 @@
 |python|python3|python2系で実行するのを防ぐためです|
 |pip   |pip3   |python2系で実行するのを防ぐためです|
 
+## 開発環境
+仮想環境の構築に **pipenv** を利用しています。  
+依存関係などを見たい場合には、`PubSubSensor`のディレクトリに入ったうえで
+```bash
+pipenv run pip check
+```
+を実行してください。
+
+新たにライブラリをインストールする、プログラムを実行するなど、仮想環境内でのコマンドが多くなる場合は
+```bash
+pipenv shell
+```
+をすることで`pipenv run`の部分が不要になります
+
+具体的には、
+```bash
+pipenv run pip install numpy
+pipenv run pip check
+pipenv run python hoge.py
+```
+のような流れは
+```bash
+pipenv shell
+pip install numpy
+pip check
+python hoge.py
+```
+と等価です。
+
 ---
 
 # メモ
