@@ -34,10 +34,10 @@ class I2CSensorBase(metaclass=ABCMeta):
 
 
 class Thermistor(I2CSensorBase):
-    type = "thermistor"
-    model_number = "103JT-050"
 
     def __init__(self):
+        self.type = "thermistor"
+        self.model_number = "103JT-050"
         self.measured_time = Value("i", 0)
         self.temperature_celsius = Value("i", 0)
         super().__init__()
@@ -51,6 +51,11 @@ class Thermistor(I2CSensorBase):
             self.measured_time.value += 1
             self.temperature_celsius.value += 1
 
+
+# TODO: 圧力センサークラス
+# TODO: 加速度センサークラス
+# TODO: 温湿度センサークラス
+# TODO: 脈波センサークラス
 
 if __name__ == "__main__":
     Th1 = Thermistor()
