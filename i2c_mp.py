@@ -9,10 +9,12 @@ class I2CSensorBase(metaclass=ABCMeta):
     Base class of I2C Sensor.
     """
 
-    def __init__(self):
+    def __init__(self, bus, address):
+        self._bus = bus
+        self._address = address
         self.setup()
-        self.__p = Process(target=self.process, args=())
-        self.__p.start()
+        self._p = Process(target=self.process, args=())
+        self._p.start()
 
     @abstractmethod
     def setup(self):
@@ -35,12 +37,12 @@ class I2CSensorBase(metaclass=ABCMeta):
 
 class Thermistor(I2CSensorBase):
 
-    def __init__(self):
+    def __init__(self, bus, address):
         self.type = "thermistor"
         self.model_number = "103JT-050"
         self.measured_time = Value("i", 0)
         self.temperature_celsius = Value("i", 0)
-        super().__init__()
+        super().__init__(bus, address)
 
     def setup(self):
         pass
@@ -58,8 +60,8 @@ class Thermistor(I2CSensorBase):
 # TODO: 脈波センサークラス
 
 if __name__ == "__main__":
-    Th1 = Thermistor()
-    Th2 = Thermistor()
+    Th1 = Thermistor("bus", 0x40)
+    Th2 = Thermistor("bus", 0x60)
     while True:
         sleep(2)
         print(Th1.status_dict, Th2.status_dict)
