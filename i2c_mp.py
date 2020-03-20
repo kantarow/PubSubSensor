@@ -4,11 +4,12 @@ from time import sleep, time
 from abc import ABCMeta, abstractmethod
 
 
+# TODO: 例外処理
 class I2CSensorBase(metaclass=ABCMeta):
     """
     I2Cセンサーを表す基底クラス
     """
-
+    @abstractmethod
     def __init__(self, bus, address):
         self._bus = bus
         self._address = address
