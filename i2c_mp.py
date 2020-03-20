@@ -6,7 +6,11 @@ from abc import ABCMeta, abstractmethod
 class I2CBase(metaclass=ABCMeta):
     def __init__(self):
         self.__m = Manager()
-        self.status_dict = self.__m.dict({})
+        self._status_dict = self.__m.dict({})
+        # TODO: getter/setterの設定(copyしなくてよいようにする)
+        # TODO: 色々privateにしてみる
+        # TODO: setupに色々書くのをやめる
+        # TODO: 共通処理をここに書く
 
         self.setup()
 
@@ -21,22 +25,26 @@ class I2CBase(metaclass=ABCMeta):
     def process(self):
         pass
 
+    @property
+    def status_dict(self):
+        return self._status_dict.copy()
+
 
 class Thermistor(I2CBase):
     def __init__(self):
         super().__init__()
 
     def setup(self):
-        self.status_dict["type"] = "thermistor"
-        self.status_dict["model_number"] = "103JT-050"
-        self.status_dict["measured_time"] = 0
-        self.status_dict["temperature_celsius"] = 0
+        self._status_dict["type"] = "thermistor"
+        self._status_dict["model_number"] = "103JT-050"
+        self._status_dict["measured_time"] = 0
+        self._status_dict["temperature_celsius"] = 0
 
     def process(self):
         while True:
-            sleep(1)
-            self.status_dict["temperature_celsius"] += 1
-            self.status_dict["measured_time"] = time()
+            sleep(3)
+            self._status_dict["temperature_celsius"] += 1
+            self._status_dict["measured_time"] = time()
 
 
 class PressureSensor(I2CBase):
@@ -44,20 +52,20 @@ class PressureSensor(I2CBase):
         super().__init__()
 
     def setup(self):
-        self.status_dict["type"] = "pressure_sensor"
-        self.status_dict["model_number"] = "LPS251B"
-        self.status_dict["measured_time"] = 0
-        self.status_dict["pressure_hpa"] = 0
-        self.status_dict["temperature_celsius"] = 0
-        self.status_dict["altitude_meters"] = 0
+        self._status_dict["type"] = "pressure_sensor"
+        self._status_dict["model_number"] = "LPS251B"
+        self._status_dict["measured_time"] = 0
+        self._status_dict["pressure_hpa"] = 0
+        self._status_dict["temperature_celsius"] = 0
+        self._status_dict["altitude_meters"] = 0
 
     def process(self):
         while True:
-            sleep(1.5)
-            self.status_dict["measured_time"] = time()
-            self.status_dict["pressure_hpa"] += 1
-            self.status_dict["temperature_celsius"] += 1
-            self.status_dict["altitude_meters"] += 1
+            sleep(2)
+            self._status_dict["measured_time"] = time()
+            self._status_dict["pressure_hpa"] += 1
+            self._status_dict["temperature_celsius"] += 1
+            self._status_dict["altitude_meters"] += 1
 
 
 if __name__ == "__main__":
@@ -65,5 +73,5 @@ if __name__ == "__main__":
     B = PressureSensor()
     while True:
         sleep(2)
-        print(A.status_dict.copy())
-        print(B.status_dict.copy())
+        print(A.status_dict)
+        print(B.status_dict)
