@@ -1,19 +1,16 @@
-from multiprocessing import Process, Manager
-from time import sleep, time
+from multiprocessing import Process, Value
+from multiprocessing.sharedctypes import Synchronized
+from time import sleep
 from abc import ABCMeta, abstractmethod
 
 
-class I2CBase(metaclass=ABCMeta):
+class I2CSensorBase(metaclass=ABCMeta):
+    """
+    Base class of I2C Sensor.
+    """
+
     def __init__(self):
-        self.__m = Manager()
-        self._status_dict = self.__m.dict({})
-        # TODO: getter/setterの設定(copyしなくてよいようにする)
-        # TODO: 色々privateにしてみる
-        # TODO: setupに色々書くのをやめる
-        # TODO: 共通処理をここに書く
-
         self.setup()
-
         self.__p = Process(target=self.process, args=())
         self.__p.start()
 
@@ -27,51 +24,37 @@ class I2CBase(metaclass=ABCMeta):
 
     @property
     def status_dict(self):
-        return self._status_dict.copy()
+
+        def restore(data):
+            if isinstance(data, Synchronized):
+                return data.value
+            return data
+
+        return {k: restore(v) for k, v in self.__dict__.items() if not k.startswith("_")}
 
 
-class Thermistor(I2CBase):
+class Thermistor(I2CSensorBase):
+    type = "thermistor"
+    model_number = "103JT-050"
+
     def __init__(self):
+        self.measured_time = Value("i", 0)
+        self.temperature_celsius = Value("i", 0)
         super().__init__()
 
     def setup(self):
-        self._status_dict["type"] = "thermistor"
-        self._status_dict["model_number"] = "103JT-050"
-        self._status_dict["measured_time"] = 0
-        self._status_dict["temperature_celsius"] = 0
-
-    def process(self):
-        while True:
-            sleep(3)
-            self._status_dict["temperature_celsius"] += 1
-            self._status_dict["measured_time"] = time()
-
-
-class PressureSensor(I2CBase):
-    def __init__(self):
-        super().__init__()
-
-    def setup(self):
-        self._status_dict["type"] = "pressure_sensor"
-        self._status_dict["model_number"] = "LPS251B"
-        self._status_dict["measured_time"] = 0
-        self._status_dict["pressure_hpa"] = 0
-        self._status_dict["temperature_celsius"] = 0
-        self._status_dict["altitude_meters"] = 0
+        pass
 
     def process(self):
         while True:
             sleep(2)
-            self._status_dict["measured_time"] = time()
-            self._status_dict["pressure_hpa"] += 1
-            self._status_dict["temperature_celsius"] += 1
-            self._status_dict["altitude_meters"] += 1
+            self.measured_time.value += 1
+            self.temperature_celsius.value += 1
 
 
 if __name__ == "__main__":
-    A = Thermistor()
-    B = PressureSensor()
+    Th1 = Thermistor()
+    Th2 = Thermistor()
     while True:
         sleep(2)
-        print(A.status_dict)
-        print(B.status_dict)
+        print(Th1.status_dict, Th2.status_dict)
