@@ -2,10 +2,6 @@ from multiprocessing import Process, Manager
 from time import sleep
 from abc import ABCMeta, abstractmethod
 
-# TODO: 各センサの抽象基底クラスをabcで実装(__setupと__processだけ定義するようにする)
-# TODO: 各センサの値は読み込み完了次第辞書として更新する
-# TODO: ↑を総括して一つの辞書を返すクラスをつくる
-
 
 class BaseClass(metaclass=ABCMeta):
     def __init__(self):
