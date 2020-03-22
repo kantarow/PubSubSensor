@@ -1,4 +1,4 @@
-# TODO: センサーを統括して辞書を返すクラス
+# TODO: センサーを統括して辞書を返すマネージャークラス(別ファイルに)
 from multiprocessing import Process, Value
 from multiprocessing.sharedctypes import Synchronized
 from time import sleep, time
@@ -52,8 +52,11 @@ class I2CSensorBase(metaclass=ABCMeta):
         """
         センサーの値を取得してメンバを更新するプロセス
         """
+        # TODO: try-exceptでKeyboardInterruptの時に安全に接続を停止し、エラー出力を出さないようにする
         # TODO: Lockを使うようにする
         pass
+
+    # TODO: read_datas関数の実装(できればリストを返す？のかな、センサーによって変わりそう)
 
     @property
     def status_dict(self):
