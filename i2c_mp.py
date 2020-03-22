@@ -82,7 +82,40 @@ class I2CSensorBase(metaclass=ABCMeta):
 
 
 class Thermistor(I2CSensorBase):
+    """
+    サーミスターを表すクラス
+
+    Attributes
+    ----------
+    type : str
+        センサーの種類(サーミスター)
+    model_number : str
+        センサーの型番
+    measured_time : multiprocessing.Value("d")
+        現在保持しているデータを取得した時間
+    temperature_celsius : multiprocessing.Value("d")
+        摂氏温度[℃]
+    _bus : smbus2.SMBus
+        i2cのバス
+    _address : int
+        そのセンサーのi2cアドレス
+    _p : multiprocessing.Process
+        センサーの値を取得してメンバを更新していく並列プロセス
+    """
+
     def __init__(self, bus, address):
+        """
+        センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
+
+        Parameters
+        ----------
+        _bus : smbus2.SMBus
+            i2cのバス
+        _address : int
+            そのセンサーのi2cアドレス
+        _p : multiprocessing.Process
+            センサーの値を取得してメンバを更新していく並列プロセス
+        """
         self.type = "thermistor"
         self.model_number = "103JT-050"
         self.measured_time = Value("d", 0.0)
@@ -100,7 +133,44 @@ class Thermistor(I2CSensorBase):
 
 
 class PressureSensor(I2CSensorBase):
+    """
+    圧力センサーを表すクラス
+
+    Attributes
+    ----------
+    type : str
+        センサーの種類(圧力センサー)
+    model_number : str
+        センサーの型番
+    measured_time : multiprocessing.Value("d")
+        現在保持しているデータを取得した時間
+    pressure_hpa : multiprocessing.Value("d")
+        圧力[hPa]
+    temperature_celsius : multiprocessing.Value("d")
+        摂氏温度[℃]
+    altitude_meters : multiprocessing.Value("d")
+        高度[m]
+    _bus : smbus2.SMBus
+        i2cのバス
+    _address : int
+        そのセンサーのi2cアドレス
+    _p : multiprocessing.Process
+        センサーの値を取得してメンバを更新していく並列プロセス
+    """
+
     def __init__(self, bus, address):
+        """
+        センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
+
+        Parameters
+        ----------
+        _bus : smbus2.SMBus
+            i2cのバス
+        _address : int
+            そのセンサーのi2cアドレス
+        _p : multiprocessing.Process
+            センサーの値を取得してメンバを更新していく並列プロセス
+        """
         self.type = "pressure_sensor"
         self.model_number = "LPS251B"
         self.measured_time = Value("d", 0.0)
