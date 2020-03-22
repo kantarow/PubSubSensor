@@ -1,3 +1,4 @@
+# TODO: センサーを統括して辞書を返すクラス
 from multiprocessing import Process, Value
 from multiprocessing.sharedctypes import Synchronized
 from time import sleep, time
@@ -190,7 +191,65 @@ class PressureSensor(I2CSensorBase):
             self.temperature_celsius.value += 0.1
             self.altitude_meters.value += 0.1
 
-# TODO: 加速度センサークラス
+
+class Accelerometer(I2CSensorBase):
+    """
+    加速度センサーを表すクラス
+
+    Attributes
+    ----------
+    type : str
+        センサーの種類(加速度センサー)
+    model_number : str
+        センサーの型番
+    measured_time : multiprocessing.Value("d")
+        現在保持しているデータを取得した時間
+    accelerometer_x_mps2 : multiprocessing.Value("d")
+        x軸方向の加速度
+    accelerometer_y_mps2 : multiprocessing.Value("d")
+        y軸方向の加速度
+    accelerometer_z_mps2 : multiprocessing.Value("d")
+        z軸方向の加速度
+    _bus : smbus2.SMBus
+        i2cのバス
+    _address : int
+        そのセンサーのi2cアドレス
+    _p : multiprocessing.Process
+        センサーの値を取得してメンバを更新していく並列プロセス
+    """
+
+    def __init__(self, bus, address):
+        """
+        センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
+
+        Parameters
+        ----------
+        _bus : smbus2.SMBus
+            i2cのバス
+        _address : int
+            そのセンサーのi2cアドレス
+        _p : multiprocessing.Process
+            センサーの値を取得してメンバを更新していく並列プロセス
+        """
+        self.type = "accelerometer"
+        self.model_number = "KX224-1053"
+        self.measured_time = Value("d", 0.0)
+        self.accelerometer_x_mps2 = Value("d", 0.0)
+        self.accelerometer_y_mps2 = Value("d", 0.0)
+        self.accelerometer_z_mps2 = Value("d", 0.0)
+        super().__init__(bus, address)
+
+    def setup(self):
+        pass
+
+    def process(self):
+        while True:
+            sleep(3)
+            self.measured_time.value = time()
+            self.accelerometer_x_mps2.value += 1
+            self.accelerometer_y_mps2.value += 1
+            self.accelerometer_z_mps2.value += 1
+
 # TODO: 温湿度センサークラス
 # TODO: 脈波センサークラス
 
@@ -199,6 +258,7 @@ if __name__ == "__main__":
     Th1 = Thermistor("bus", 0x40)
     Th2 = Thermistor("bus", 0x60)
     Pr = PressureSensor("bus", 0x80)
+    Ac = Accelerometer("bus", 0xa1)
     while True:
         sleep(1)
-        print(Th1.status_dict, Th2.status_dict, Pr.status_dict)
+        print(Th1.status_dict, Th2.status_dict, Pr.status_dict, Ac.status_dict)
