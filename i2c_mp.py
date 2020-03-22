@@ -5,7 +5,6 @@ from time import sleep, time
 from abc import ABCMeta, abstractmethod
 
 
-# TODO: 例外処理
 class I2CSensorBase(metaclass=ABCMeta):
     """
     I2Cセンサーを表す抽象基底クラス
@@ -42,6 +41,7 @@ class I2CSensorBase(metaclass=ABCMeta):
 
     @abstractmethod
     def setup(self):
+        # TODO: 何回かリトライしてだめだったらエラーを吐いたり接続せずに進めたりする(引数とかの調整はマネージャークラスでやったほうがいいかも)
         """
         接続前のモード設定などをする
         """
@@ -305,7 +305,57 @@ class TemperatureHumiditySensor(I2CSensorBase):
             self.temperature_celsius.value += 1
             self.humidity_percent.value += 1
 
-# TODO: 脈波センサークラス
+
+class PulseWaveSensor(I2CSensorBase):
+    """
+    脈波センサーを表すクラス
+
+    Attributes
+    ----------
+    type : str
+        センサーの種類(脈波センサー)
+    model_number : str
+        センサーの型番
+    measured_time : multiprocessing.Value("d")
+        現在保持しているデータを取得した時間
+    heart_bpm_fifo_1204hz : multiprocessing.Value("d")
+        脈波の値
+    _bus : smbus2.SMBus
+        i2cのバス
+    _address : int
+        そのセンサーのi2cアドレス
+    _p : multiprocessing.Process
+        センサーの値を取得してメンバを更新していく並列プロセス
+    """
+
+    def __init__(self, bus, address):
+        """
+        センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
+
+        Parameters
+        ----------
+        _bus : smbus2.SMBus
+            i2cのバス
+        _address : int
+            そのセンサーのi2cアドレス
+        _p : multiprocessing.Process
+            センサーの値を取得してメンバを更新していく並列プロセス
+        """
+        self.type = "pulse_wave_sensor"
+        self.model_number = "BH1792GLC"
+        self.measured_time = Value("d", 0.0)
+        self.heart_bpm_fifo_1204hz = Value("d", 0.0)
+        super().__init__(bus, address)
+
+    def setup(self):
+        pass
+
+    def process(self):
+        while True:
+            sleep(10)
+            self.measured_time.value = time()
+            self.temperature_celsius.value += 1
+            self.humidity_percent.value += 1
 
 
 if __name__ == "__main__":
@@ -313,6 +363,8 @@ if __name__ == "__main__":
     Th2 = Thermistor("bus", 0x60)
     Pr = PressureSensor("bus", 0x80)
     Ac = Accelerometer("bus", 0xa1)
+    THs = TemperatureHumiditySensor("bus", 0x15)
+    Pw = PulseWaveSensor("bus", 0x25)
     while True:
         sleep(1)
-        print(Th1.status_dict, Th2.status_dict, Pr.status_dict, Ac.status_dict)
+        print(Th1, Th2, Pr, Ac, THs, Pw)
