@@ -250,7 +250,61 @@ class Accelerometer(I2CSensorBase):
             self.accelerometer_y_mps2.value += 1
             self.accelerometer_z_mps2.value += 1
 
-# TODO: 温湿度センサークラス
+
+class TemperatureHumiditySensor(I2CSensorBase):
+    """
+    温湿度センサーを表すクラス
+
+    Attributes
+    ----------
+    type : str
+        センサーの種類(温湿度センサー)
+    model_number : str
+        センサーの型番
+    measured_time : multiprocessing.Value("d")
+        現在保持しているデータを取得した時間
+    temperature_celsius : multiprocessing.Value("d")
+        温度[℃]
+    humidity_percent : multiprocessing.Value("d")
+        空気中の湿度[%]
+    _bus : smbus2.SMBus
+        i2cのバス
+    _address : int
+        そのセンサーのi2cアドレス
+    _p : multiprocessing.Process
+        センサーの値を取得してメンバを更新していく並列プロセス
+    """
+
+    def __init__(self, bus, address):
+        """
+        センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
+
+        Parameters
+        ----------
+        _bus : smbus2.SMBus
+            i2cのバス
+        _address : int
+            そのセンサーのi2cアドレス
+        _p : multiprocessing.Process
+            センサーの値を取得してメンバを更新していく並列プロセス
+        """
+        self.type = "temperature_humidity_sensor"
+        self.model_number = "SHT31"
+        self.measured_time = Value("d", 0.0)
+        self.temperature_celsius = Value("d", 0.0)
+        self.humidity_percent = Value("d", 0.0)
+        super().__init__(bus, address)
+
+    def setup(self):
+        pass
+
+    def process(self):
+        while True:
+            sleep(0.5)
+            self.measured_time.value = time()
+            self.temperature_celsius.value += 1
+            self.humidity_percent.value += 1
+
 # TODO: 脈波センサークラス
 
 
