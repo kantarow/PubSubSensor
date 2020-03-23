@@ -1,9 +1,9 @@
+from abc import ABC, abstractmethod
+from ctypes import c_bool
 from multiprocessing import Process, Value
 from multiprocessing.sharedctypes import Synchronized
-from time import sleep, time
-from abc import ABC, abstractmethod
 from smbus2 import SMBus
-from os import getpid
+from time import sleep, time
 
 
 class I2CSensorBase(ABC):
@@ -32,36 +32,47 @@ class I2CSensorBase(ABC):
         _address : int
             そのセンサーのi2cアドレス
         _p : multiprocessing.Process
-            センサーの値を取得してメンバを更新していく並列プロセス
+            センサーが動かす並列プロセス。
         """
         # self._bus = SMBus(1)
         self._bus = "bus"
         self._address = address
-        self._setup()
-        self._p = Process(target=self._process, args=())
-        self._p.start()
+        self._is_active = Value(c_bool, True)
+        try:
+            self._setup()
+        except Exception as e:
+            print(type(e), e)
+            self._close()
+        else:
+            self._p = Process(target=self._process, args=())
+            self._p.start()
 
-    # TODO: close関数の実装。busのcloseとis_activeをFalseに
+    def _close(self):
+        if isinstance(self._bus, SMBus):
+            self._bus.close()
+        self._is_active.value = False
+
     @abstractmethod
     def _setup(self):
-        # TODO: 何回かリトライしてだめだったらエラーを吐いたり接続せずに進めたりする(引数とかの調整はマネージャークラスでやったほうがいいかも)
         """
         接続前のモード設定などをする
         """
         pass
 
-    # @abstractmethod
     def _process(self):
         """
         センサーの値を取得してメンバを更新するプロセス
         """
-        while True:
-            sleep(2)
-            self.hoge()
-        # BUG: while self._is_active.valueで動かしたいが、データ読み取り部分を外部に移譲するとバグる(並列処理なので)
-        # TODO: プロセスを続けるかどうかの判断をするためのbool変数
-        # TODO: try-exceptでKeyboardInterruptの時に安全に接続を停止し、エラー出力を出さないようにする
-        pass
+        try:
+            while self._is_active.value:
+                sleep(2)
+                self.hoge()
+        except KeyboardInterrupt:
+            pass
+        except Exception as e:
+            print(type(e), e)
+        finally:
+            self._close()
 
     @abstractmethod
     def hoge(self):
@@ -92,6 +103,10 @@ class I2CSensorBase(ABC):
             return data
 
         return {k: restore(v) for k, v in self.__dict__.items() if not k.startswith("_")}
+
+    @property
+    def is_active(self):
+        return self._is_active.value
 
 
 class Thermistor(I2CSensorBase):
@@ -196,8 +211,6 @@ class PressureSensor(I2CSensorBase):
 
     def hoge(self):
         sleep(2.5)
-        print("h, pre:", getpid())
-
         self.measured_time.value = time()
         self.pressure_hpa.value += 0.1
         self.temperature_celsius.value += 0.1
@@ -377,6 +390,12 @@ if __name__ == "__main__":
     # THs = TemperatureHumiditySensor(0x15)
     # Pw = PulseWaveSensor(0x25)
     while True:
-        sleep(1.5)
-        print(Th1.status_dict)
-        print(Pr.status_dict)
+        try:
+            sleep(1.5)
+            print(Th1.status_dict)
+            print(Pr.status_dict)
+        except KeyboardInterrupt:
+            sleep(1)
+            print(Th1.is_active)
+            print(Pr.is_active)
+            break
