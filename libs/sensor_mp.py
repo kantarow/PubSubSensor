@@ -1,8 +1,9 @@
+from abc import ABC, abstractmethod
+from ctypes import c_bool
 from multiprocessing import Process, Value
 from multiprocessing.sharedctypes import Synchronized
-from time import sleep, time
-from abc import ABC, abstractmethod
 from smbus2 import SMBus
+from time import sleep, time
 
 
 class I2CSensorBase(ABC):
@@ -14,9 +15,15 @@ class I2CSensorBase(ABC):
     _bus : smbus2.SMBus
         i2cのバス
     _address : int
-        そのセンサーのi2cアドレス
+        センサーのi2cアドレス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
+
+    Notes
+    -----
+    このクラスのサブクラスとしてセンサーを表すクラスを定義する場合、@abstractmethodがついているメソッドのみをオーバーライドすればよいです
     """
 
     @abstractmethod
@@ -26,39 +33,62 @@ class I2CSensorBase(ABC):
 
         Parameters
         ----------
-        _bus : smbus2.SMBus
-            i2cのバス
         _address : int
-            そのセンサーのi2cアドレス
-        _p : multiprocessing.Process
-            センサーの値を取得してメンバを更新していく並列プロセス
+            センサーのi2cアドレス
         """
         # self._bus = SMBus(1)
         self._bus = "bus"
         self._address = address
-        self._setup()
-        self._p = Process(target=self._process, args=())
-        self._p.start()
+        self._is_active = Value(c_bool, True)
+        try:
+            self._setup()
+        except Exception as e:
+            print(type(e), e)
+            self._close()
+        else:
+            self._p = Process(target=self._process, args=())
+            self._p.start()
 
-    # TODO: close関数の実装。busのcloseとis_activeをFalseに
     @abstractmethod
     def _setup(self):
-        # TODO: 何回かリトライしてだめだったらエラーを吐いたり接続せずに進めたりする(引数とかの調整はマネージャークラスでやったほうがいいかも)
         """
         接続前のモード設定などをする
         """
         pass
 
     @abstractmethod
+    def _update(self):
+        """
+        センサーの値を読みメンバを更新する
+        """
+        pass
+
+    """
+    以下はオーバーライドしない想定のメソッド
+    """
+
     def _process(self):
         """
         センサーの値を取得してメンバを更新するプロセス
         """
-        # TODO: プロセスを続けるかどうかの判断をするためのbool変数
-        # TODO: try-exceptでKeyboardInterruptの時に安全に接続を停止し、エラー出力を出さないようにする
-        pass
+        try:
+            while self._is_active.value:
+                sleep(2)
+                self._update()
+        except KeyboardInterrupt:
+            pass
+        except Exception as e:
+            print(type(e), e)
+        finally:
+            self._close()
 
-    # TODO: read_datas関数の実装(できればリストを返す？のかな、センサーによって変わりそう)
+    def _close(self):
+        """
+        センサー自体を閉じるメソッド。i2cのバスを閉じて、プロセスの実行も止める
+        """
+        if isinstance(self._bus, SMBus):
+            self._bus.close()
+        self._is_active.value = False
 
     @property
     def status_dict(self):
@@ -67,8 +97,8 @@ class I2CSensorBase(ABC):
 
         Returns
         -------
-        status_dict : dict[str, int or str]
-            メンバの値の辞書
+        status_dict : dict[str, float or str]
+            Publicメンバの値の辞書
         """
 
         def restore(data):
@@ -77,14 +107,31 @@ class I2CSensorBase(ABC):
 
             Parameters
             ----------
-            data : multiprocessing.sharedctypes.Synchronized or other(default python type)
+            data : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool) or other(default python type)
                 復元したいデータ
+
+            Returns
+            -------
+            data : float or str
+                復元されたデータ、もしくはそのままPythonで扱える型のデータ
             """
             if isinstance(data, Synchronized):
                 return data.value
             return data
 
         return {k: restore(v) for k, v in self.__dict__.items() if not k.startswith("_")}
+
+    @property
+    def is_active(self):
+        """
+        このセンサが動いているかを返す
+
+        Returns
+        -------
+        self._is_active.value : bool
+            _is_activeの値
+        """
+        return self._is_active.value
 
 
 class Thermistor(I2CSensorBase):
@@ -97,14 +144,16 @@ class Thermistor(I2CSensorBase):
         センサーの種類(サーミスター)
     model_number : str
         センサーの型番
-    measured_time : multiprocessing.Value("d")
+    measured_time : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         現在保持しているデータを取得した時間
-    temperature_celsius : multiprocessing.Value("d")
+    temperature_celsius : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         摂氏温度[℃]
     _bus : smbus2.SMBus
         i2cのバス
     _address : int
-        そのセンサーのi2cアドレス
+        センサーのi2cアドレス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
     """
@@ -115,12 +164,8 @@ class Thermistor(I2CSensorBase):
 
         Parameters
         ----------
-        _bus : smbus2.SMBus
-            i2cのバス
         _address : int
-            そのセンサーのi2cアドレス
-        _p : multiprocessing.Process
-            センサーの値を取得してメンバを更新していく並列プロセス
+            センサーのi2cアドレス
         """
         self.type = "thermistor"
         self.model_number = "103JT-050"
@@ -131,11 +176,10 @@ class Thermistor(I2CSensorBase):
     def _setup(self):
         pass
 
-    def _process(self):
-        while True:
-            sleep(4)
-            self.measured_time.value = time()
-            self.temperature_celsius.value += 1
+    def _update(self):
+        self.measured_time.value = time()
+        self.temperature_celsius.value += 1
+        sleep(4)
 
 
 class PressureSensor(I2CSensorBase):
@@ -148,18 +192,20 @@ class PressureSensor(I2CSensorBase):
         センサーの種類(圧力センサー)
     model_number : str
         センサーの型番
-    measured_time : multiprocessing.Value("d")
+    measured_time : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         現在保持しているデータを取得した時間
-    pressure_hpa : multiprocessing.Value("d")
+    pressure_hpa : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         圧力[hPa]
-    temperature_celsius : multiprocessing.Value("d")
+    temperature_celsius : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         摂氏温度[℃]
-    altitude_meters : multiprocessing.Value("d")
+    altitude_meters : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         高度[m]
     _bus : smbus2.SMBus
         i2cのバス
     _address : int
-        そのセンサーのi2cアドレス
+        センサーのi2cアドレス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
     """
@@ -170,12 +216,8 @@ class PressureSensor(I2CSensorBase):
 
         Parameters
         ----------
-        _bus : smbus2.SMBus
-            i2cのバス
         _address : int
-            そのセンサーのi2cアドレス
-        _p : multiprocessing.Process
-            センサーの値を取得してメンバを更新していく並列プロセス
+            センサーのi2cアドレス
         """
         self.type = "pressure_sensor"
         self.model_number = "LPS251B"
@@ -188,13 +230,12 @@ class PressureSensor(I2CSensorBase):
     def _setup(self):
         pass
 
-    def _process(self):
-        while True:
-            sleep(2.5)
-            self.measured_time.value = time()
-            self.pressure_hpa.value += 0.1
-            self.temperature_celsius.value += 0.1
-            self.altitude_meters.value += 0.1
+    def _update(self):
+        self.measured_time.value = time()
+        self.pressure_hpa.value += 0.1
+        self.temperature_celsius.value += 0.1
+        self.altitude_meters.value += 0.1
+        sleep(2.5)
 
 
 class Accelerometer(I2CSensorBase):
@@ -207,18 +248,20 @@ class Accelerometer(I2CSensorBase):
         センサーの種類(加速度センサー)
     model_number : str
         センサーの型番
-    measured_time : multiprocessing.Value("d")
+    measured_time : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         現在保持しているデータを取得した時間
-    accelerometer_x_mps2 : multiprocessing.Value("d")
+    accelerometer_x_mps2 : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         x軸方向の加速度
-    accelerometer_y_mps2 : multiprocessing.Value("d")
+    accelerometer_y_mps2 : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         y軸方向の加速度
-    accelerometer_z_mps2 : multiprocessing.Value("d")
+    accelerometer_z_mps2 : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         z軸方向の加速度
     _bus : smbus2.SMBus
         i2cのバス
     _address : int
-        そのセンサーのi2cアドレス
+        センサーのi2cアドレス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
     """
@@ -229,12 +272,8 @@ class Accelerometer(I2CSensorBase):
 
         Parameters
         ----------
-        _bus : smbus2.SMBus
-            i2cのバス
         _address : int
-            そのセンサーのi2cアドレス
-        _p : multiprocessing.Process
-            センサーの値を取得してメンバを更新していく並列プロセス
+            センサーのi2cアドレス
         """
         self.type = "accelerometer"
         self.model_number = "KX224-1053"
@@ -247,13 +286,12 @@ class Accelerometer(I2CSensorBase):
     def _setup(self):
         pass
 
-    def _process(self):
-        while True:
-            sleep(3)
-            self.measured_time.value = time()
-            self.accelerometer_x_mps2.value += 1
-            self.accelerometer_y_mps2.value += 1
-            self.accelerometer_z_mps2.value += 1
+    def _update(self):
+        self.measured_time.value = time()
+        self.accelerometer_x_mps2.value += 1
+        self.accelerometer_y_mps2.value += 1
+        self.accelerometer_z_mps2.value += 1
+        sleep(3)
 
 
 class TemperatureHumiditySensor(I2CSensorBase):
@@ -266,16 +304,18 @@ class TemperatureHumiditySensor(I2CSensorBase):
         センサーの種類(温湿度センサー)
     model_number : str
         センサーの型番
-    measured_time : multiprocessing.Value("d")
+    measured_time : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         現在保持しているデータを取得した時間
-    temperature_celsius : multiprocessing.Value("d")
+    temperature_celsius : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         温度[℃]
-    humidity_percent : multiprocessing.Value("d")
+    humidity_percent : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         空気中の湿度[%]
     _bus : smbus2.SMBus
         i2cのバス
     _address : int
-        そのセンサーのi2cアドレス
+        センサーのi2cアドレス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
     """
@@ -286,12 +326,8 @@ class TemperatureHumiditySensor(I2CSensorBase):
 
         Parameters
         ----------
-        _bus : smbus2.SMBus
-            i2cのバス
         _address : int
-            そのセンサーのi2cアドレス
-        _p : multiprocessing.Process
-            センサーの値を取得してメンバを更新していく並列プロセス
+            センサーのi2cアドレス
         """
         self.type = "temperature_humidity_sensor"
         self.model_number = "SHT31"
@@ -303,12 +339,11 @@ class TemperatureHumiditySensor(I2CSensorBase):
     def _setup(self):
         pass
 
-    def _process(self):
-        while True:
-            sleep(0.5)
-            self.measured_time.value = time()
-            self.temperature_celsius.value += 1
-            self.humidity_percent.value += 1
+    def _update(self):
+        self.measured_time.value = time()
+        self.temperature_celsius.value += 1
+        self.humidity_percent.value += 1
+        sleep(0.5)
 
 
 class PulseWaveSensor(I2CSensorBase):
@@ -321,14 +356,16 @@ class PulseWaveSensor(I2CSensorBase):
         センサーの種類(脈波センサー)
     model_number : str
         センサーの型番
-    measured_time : multiprocessing.Value("d")
+    measured_time : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         現在保持しているデータを取得した時間
-    heart_bpm_fifo_1204hz : multiprocessing.Value("d")
+    heart_bpm_fifo_1204hz : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         脈波の値
     _bus : smbus2.SMBus
         i2cのバス
     _address : int
-        そのセンサーのi2cアドレス
+        センサーのi2cアドレス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
     """
@@ -339,12 +376,8 @@ class PulseWaveSensor(I2CSensorBase):
 
         Parameters
         ----------
-        _bus : smbus2.SMBus
-            i2cのバス
         _address : int
-            そのセンサーのi2cアドレス
-        _p : multiprocessing.Process
-            センサーの値を取得してメンバを更新していく並列プロセス
+            センサーのi2cアドレス
         """
         self.type = "pulse_wave_sensor"
         self.model_number = "BH1792GLC"
@@ -355,11 +388,10 @@ class PulseWaveSensor(I2CSensorBase):
     def _setup(self):
         pass
 
-    def _process(self):
-        while True:
-            sleep(10)
-            self.measured_time.value = time()
-            self.heart_bpm_fifo_1204hz.value += 1
+    def _update(self):
+        self.measured_time.value = time()
+        self.heart_bpm_fifo_1204hz.value += 1
+        sleep(10)
 
 
 if __name__ == "__main__":
@@ -370,10 +402,13 @@ if __name__ == "__main__":
     THs = TemperatureHumiditySensor(0x15)
     Pw = PulseWaveSensor(0x25)
     while True:
-        sleep(1.5)
-        Th1.status_dict
-        Th2.status_dict
-        Pr.status_dict
-        Ac.status_dict
-        THs.status_dict
-        Pw.status_dict
+        try:
+            sleep(4)
+            print(Th1.status_dict)
+            print(Th2.status_dict)
+            print(Pr.status_dict)
+            print(Ac.status_dict)
+            print(THs.status_dict)
+            print(Pw.status_dict)
+        except KeyboardInterrupt:
+            break

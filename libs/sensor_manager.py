@@ -3,6 +3,7 @@ from sensor_mp import Thermistor, PressureSensor, Accelerometer, TemperatureHumi
 from time import sleep
 
 
+# IDEA: このクラスはそれ自体が複雑なセンサーとして表現したほうが自然に実装できそう
 class SensorManager:
     """
     センサーを統括してデータをまとめて扱うするためのクラス
@@ -31,6 +32,7 @@ class SensorManager:
     @property
     def status_dict(self):
         return {key: sensor.status_dict for key, sensor in self.sensors}
+    # TODO: センサーが生きているかどうかのタプルを返すメソッド
 
 
 if __name__ == '__main__':
