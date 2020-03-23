@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from ctypes import c_bool
-from multiprocessing import Process, Value
+from multiprocessing import Process, Value, log_to_stderr, get_logger
 from multiprocessing.sharedctypes import Synchronized
 from smbus2 import SMBus
 from time import sleep, time
+import logging
 
 
 class I2CSensorBase(ABC):
@@ -27,7 +28,7 @@ class I2CSensorBase(ABC):
     """
 
     @abstractmethod
-    def __init__(self, address):
+    def __init__(self, address, logger):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -39,6 +40,7 @@ class I2CSensorBase(ABC):
         # self._bus = SMBus(1)
         self._bus = "bus"
         self._address = address
+        self._logger = logger
         self._is_active = Value(c_bool, True)
         try:
             self._setup()
@@ -75,6 +77,7 @@ class I2CSensorBase(ABC):
             while self._is_active.value:
                 sleep(2)
                 self._update()
+                self._logger.debug(self.status_dict)
         except KeyboardInterrupt:
             pass
         except Exception as e:
@@ -158,7 +161,7 @@ class Thermistor(I2CSensorBase):
         センサーの値を取得してメンバを更新していく並列プロセス
     """
 
-    def __init__(self, address):
+    def __init__(self, address, logger):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -171,7 +174,7 @@ class Thermistor(I2CSensorBase):
         self.model_number = "103JT-050"
         self.measured_time = Value("d", 0.0)
         self.temperature_celsius = Value("d", 0.0)
-        super().__init__(address)
+        super().__init__(address, logger)
 
     def _setup(self):
         pass
@@ -210,7 +213,7 @@ class PressureSensor(I2CSensorBase):
         センサーの値を取得してメンバを更新していく並列プロセス
     """
 
-    def __init__(self, address):
+    def __init__(self, address, logger):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -225,7 +228,7 @@ class PressureSensor(I2CSensorBase):
         self.pressure_hpa = Value("d", 0.0)
         self.temperature_celsius = Value("d", 0.0)
         self.altitude_meters = Value("d", 0.0)
-        super().__init__(address)
+        super().__init__(address, logger)
 
     def _setup(self):
         pass
@@ -266,7 +269,7 @@ class Accelerometer(I2CSensorBase):
         センサーの値を取得してメンバを更新していく並列プロセス
     """
 
-    def __init__(self, address):
+    def __init__(self, address, logger):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -281,7 +284,7 @@ class Accelerometer(I2CSensorBase):
         self.accelerometer_x_mps2 = Value("d", 0.0)
         self.accelerometer_y_mps2 = Value("d", 0.0)
         self.accelerometer_z_mps2 = Value("d", 0.0)
-        super().__init__(address)
+        super().__init__(address, logger)
 
     def _setup(self):
         pass
@@ -320,7 +323,7 @@ class TemperatureHumiditySensor(I2CSensorBase):
         センサーの値を取得してメンバを更新していく並列プロセス
     """
 
-    def __init__(self, address):
+    def __init__(self, address, logger):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -334,7 +337,7 @@ class TemperatureHumiditySensor(I2CSensorBase):
         self.measured_time = Value("d", 0.0)
         self.temperature_celsius = Value("d", 0.0)
         self.humidity_percent = Value("d", 0.0)
-        super().__init__(address)
+        super().__init__(address, logger)
 
     def _setup(self):
         pass
@@ -370,7 +373,7 @@ class PulseWaveSensor(I2CSensorBase):
         センサーの値を取得してメンバを更新していく並列プロセス
     """
 
-    def __init__(self, address):
+    def __init__(self, address, logger):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -383,7 +386,7 @@ class PulseWaveSensor(I2CSensorBase):
         self.model_number = "BH1792GLC"
         self.measured_time = Value("d", 0.0)
         self.heart_bpm_fifo_1204hz = Value("d", 0.0)
-        super().__init__(address)
+        super().__init__(address, logger)
 
     def _setup(self):
         pass
@@ -395,20 +398,18 @@ class PulseWaveSensor(I2CSensorBase):
 
 
 if __name__ == "__main__":
-    Th1 = Thermistor(0x40)
-    Th2 = Thermistor(0x60)
-    Pr = PressureSensor(0x80)
-    Ac = Accelerometer(0xa1)
-    THs = TemperatureHumiditySensor(0x15)
-    Pw = PulseWaveSensor(0x25)
+    log_to_stderr()
+    logger = get_logger()
+    logger.setLevel(logging.DEBUG)
+
+    Th1 = Thermistor(0x40, logger)
+    Th2 = Thermistor(0x60, logger)
+    Pr = PressureSensor(0x80, logger)
+    Ac = Accelerometer(0xa1, logger)
+    THs = TemperatureHumiditySensor(0x15, logger)
+    Pw = PulseWaveSensor(0x25, logger)
     while True:
         try:
-            sleep(4)
-            print(Th1.status_dict)
-            print(Th2.status_dict)
-            print(Pr.status_dict)
-            print(Ac.status_dict)
-            print(THs.status_dict)
-            print(Pw.status_dict)
+            sleep(2)
         except KeyboardInterrupt:
             break
