@@ -3,6 +3,7 @@ from multiprocessing.sharedctypes import Synchronized
 from time import sleep, time
 from abc import ABC, abstractmethod
 from smbus2 import SMBus
+from os import getpid
 
 
 class I2CSensorBase(ABC):
@@ -49,16 +50,22 @@ class I2CSensorBase(ABC):
         """
         pass
 
-    @abstractmethod
+    # @abstractmethod
     def _process(self):
         """
         センサーの値を取得してメンバを更新するプロセス
         """
+        while True:
+            sleep(2)
+            self.hoge()
+        # BUG: while self._is_active.valueで動かしたいが、データ読み取り部分を外部に移譲するとバグる(並列処理なので)
         # TODO: プロセスを続けるかどうかの判断をするためのbool変数
         # TODO: try-exceptでKeyboardInterruptの時に安全に接続を停止し、エラー出力を出さないようにする
         pass
 
-    # TODO: read_datas関数の実装(できればリストを返す？のかな、センサーによって変わりそう)
+    @abstractmethod
+    def hoge(self):
+        pass
 
     @property
     def status_dict(self):
@@ -131,11 +138,10 @@ class Thermistor(I2CSensorBase):
     def _setup(self):
         pass
 
-    def _process(self):
-        while True:
-            sleep(4)
-            self.measured_time.value = time()
-            self.temperature_celsius.value += 1
+    def hoge(self):
+        sleep(4)
+        self.measured_time.value = time()
+        self.temperature_celsius.value += 1
 
 
 class PressureSensor(I2CSensorBase):
@@ -188,13 +194,14 @@ class PressureSensor(I2CSensorBase):
     def _setup(self):
         pass
 
-    def _process(self):
-        while True:
-            sleep(2.5)
-            self.measured_time.value = time()
-            self.pressure_hpa.value += 0.1
-            self.temperature_celsius.value += 0.1
-            self.altitude_meters.value += 0.1
+    def hoge(self):
+        sleep(2.5)
+        print("h, pre:", getpid())
+
+        self.measured_time.value = time()
+        self.pressure_hpa.value += 0.1
+        self.temperature_celsius.value += 0.1
+        self.altitude_meters.value += 0.1
 
 
 class Accelerometer(I2CSensorBase):
@@ -364,16 +371,12 @@ class PulseWaveSensor(I2CSensorBase):
 
 if __name__ == "__main__":
     Th1 = Thermistor(0x40)
-    Th2 = Thermistor(0x60)
+    # Th2 = Thermistor(0x60)
     Pr = PressureSensor(0x80)
-    Ac = Accelerometer(0xa1)
-    THs = TemperatureHumiditySensor(0x15)
-    Pw = PulseWaveSensor(0x25)
+    # Ac = Accelerometer(0xa1)
+    # THs = TemperatureHumiditySensor(0x15)
+    # Pw = PulseWaveSensor(0x25)
     while True:
         sleep(1.5)
-        Th1.status_dict
-        Th2.status_dict
-        Pr.status_dict
-        Ac.status_dict
-        THs.status_dict
-        Pw.status_dict
+        print(Th1.status_dict)
+        print(Pr.status_dict)
