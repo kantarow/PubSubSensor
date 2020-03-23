@@ -1,10 +1,10 @@
 from multiprocessing import Process, Value
 from multiprocessing.sharedctypes import Synchronized
 from time import sleep, time
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
 
-class I2CSensorBase(metaclass=ABCMeta):
+class I2CSensorBase(ABC):
     """
     I2Cセンサーを表す抽象基底クラス
 
@@ -51,6 +51,7 @@ class I2CSensorBase(metaclass=ABCMeta):
         """
         センサーの値を取得してメンバを更新するプロセス
         """
+        # TODO: プロセスを続けるかどうかの判断をするためのbool変数
         # TODO: try-exceptでKeyboardInterruptの時に安全に接続を停止し、エラー出力を出さないようにする
         # TODO: Lockを使うようにする
         pass
