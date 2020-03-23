@@ -177,9 +177,9 @@ class Thermistor(I2CSensorBase):
         pass
 
     def _update(self):
-        sleep(4)
         self.measured_time.value = time()
         self.temperature_celsius.value += 1
+        sleep(4)
 
 
 class PressureSensor(I2CSensorBase):
@@ -231,11 +231,11 @@ class PressureSensor(I2CSensorBase):
         pass
 
     def _update(self):
-        sleep(2.5)
         self.measured_time.value = time()
         self.pressure_hpa.value += 0.1
         self.temperature_celsius.value += 0.1
         self.altitude_meters.value += 0.1
+        sleep(2.5)
 
 
 class Accelerometer(I2CSensorBase):
@@ -286,13 +286,12 @@ class Accelerometer(I2CSensorBase):
     def _setup(self):
         pass
 
-    def _process(self):
-        while True:
-            sleep(3)
-            self.measured_time.value = time()
-            self.accelerometer_x_mps2.value += 1
-            self.accelerometer_y_mps2.value += 1
-            self.accelerometer_z_mps2.value += 1
+    def _update(self):
+        self.measured_time.value = time()
+        self.accelerometer_x_mps2.value += 1
+        self.accelerometer_y_mps2.value += 1
+        self.accelerometer_z_mps2.value += 1
+        sleep(3)
 
 
 class TemperatureHumiditySensor(I2CSensorBase):
@@ -340,12 +339,11 @@ class TemperatureHumiditySensor(I2CSensorBase):
     def _setup(self):
         pass
 
-    def _process(self):
-        while True:
-            sleep(0.5)
-            self.measured_time.value = time()
-            self.temperature_celsius.value += 1
-            self.humidity_percent.value += 1
+    def _update(self):
+        self.measured_time.value = time()
+        self.temperature_celsius.value += 1
+        self.humidity_percent.value += 1
+        sleep(0.5)
 
 
 class PulseWaveSensor(I2CSensorBase):
@@ -390,24 +388,27 @@ class PulseWaveSensor(I2CSensorBase):
     def _setup(self):
         pass
 
-    def _process(self):
-        while True:
-            sleep(10)
-            self.measured_time.value = time()
-            self.heart_bpm_fifo_1204hz.value += 1
+    def _update(self):
+        self.measured_time.value = time()
+        self.heart_bpm_fifo_1204hz.value += 1
+        sleep(10)
 
 
 if __name__ == "__main__":
     Th1 = Thermistor(0x40)
-    # Th2 = Thermistor(0x60)
+    Th2 = Thermistor(0x60)
     Pr = PressureSensor(0x80)
-    # Ac = Accelerometer(0xa1)
-    # THs = TemperatureHumiditySensor(0x15)
-    # Pw = PulseWaveSensor(0x25)
+    Ac = Accelerometer(0xa1)
+    THs = TemperatureHumiditySensor(0x15)
+    Pw = PulseWaveSensor(0x25)
     while True:
         try:
-            sleep(1.5)
-            print(Th1.status_dict, Th1.is_active)
-            print(Pr.status_dict, Pr.is_active)
+            sleep(4)
+            print(Th1.status_dict)
+            print(Th2.status_dict)
+            print(Pr.status_dict)
+            print(Ac.status_dict)
+            print(THs.status_dict)
+            print(Pw.status_dict)
         except KeyboardInterrupt:
             break
