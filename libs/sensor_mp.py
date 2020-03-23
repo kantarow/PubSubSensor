@@ -53,7 +53,6 @@ class I2CSensorBase(ABC):
         """
         # TODO: プロセスを続けるかどうかの判断をするためのbool変数
         # TODO: try-exceptでKeyboardInterruptの時に安全に接続を停止し、エラー出力を出さないようにする
-        # TODO: Lockを使うようにする
         pass
 
     # TODO: read_datas関数の実装(できればリストを返す？のかな、センサーによって変わりそう)
@@ -357,8 +356,7 @@ class PulseWaveSensor(I2CSensorBase):
         while True:
             sleep(10)
             self.measured_time.value = time()
-            self.temperature_celsius.value += 1
-            self.humidity_percent.value += 1
+            self.heart_bpm_fifo_1204hz.value += 1
 
 
 if __name__ == "__main__":
@@ -369,5 +367,10 @@ if __name__ == "__main__":
     THs = TemperatureHumiditySensor("bus", 0x15)
     Pw = PulseWaveSensor("bus", 0x25)
     while True:
-        sleep(1)
-        print(Th1, Th2, Pr, Ac, THs, Pw)
+        sleep(1.5)
+        Th1.status_dict
+        Th2.status_dict
+        Pr.status_dict
+        Ac.status_dict
+        THs.status_dict
+        Pw.status_dict
