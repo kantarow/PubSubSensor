@@ -57,7 +57,7 @@ class I2CSensorBase(ABC):
         pass
 
     @abstractmethod
-    def hoge(self):
+    def _update(self):
         """
         センサーの値を読みメンバを更新する
         """
@@ -74,7 +74,7 @@ class I2CSensorBase(ABC):
         try:
             while self._is_active.value:
                 sleep(2)
-                self.hoge()
+                self._update()
         except KeyboardInterrupt:
             pass
         except Exception as e:
@@ -176,7 +176,7 @@ class Thermistor(I2CSensorBase):
     def _setup(self):
         pass
 
-    def hoge(self):
+    def _update(self):
         sleep(4)
         self.measured_time.value = time()
         self.temperature_celsius.value += 1
@@ -230,7 +230,7 @@ class PressureSensor(I2CSensorBase):
     def _setup(self):
         pass
 
-    def hoge(self):
+    def _update(self):
         sleep(2.5)
         self.measured_time.value = time()
         self.pressure_hpa.value += 0.1
