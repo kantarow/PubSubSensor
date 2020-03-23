@@ -34,12 +34,12 @@ class I2CSensorBase(metaclass=ABCMeta):
         """
         self._bus = bus
         self._address = address
-        self.setup()
-        self._p = Process(target=self.process, args=())
+        self._setup()
+        self._p = Process(target=self._process, args=())
         self._p.start()
 
     @abstractmethod
-    def setup(self):
+    def _setup(self):
         # TODO: 何回かリトライしてだめだったらエラーを吐いたり接続せずに進めたりする(引数とかの調整はマネージャークラスでやったほうがいいかも)
         """
         接続前のモード設定などをする
@@ -47,7 +47,7 @@ class I2CSensorBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def process(self):
+    def _process(self):
         """
         センサーの値を取得してメンバを更新するプロセス
         """
@@ -125,10 +125,10 @@ class Thermistor(I2CSensorBase):
         self.temperature_celsius = Value("d", 0.0)
         super().__init__(bus, address)
 
-    def setup(self):
+    def _setup(self):
         pass
 
-    def process(self):
+    def _process(self):
         while True:
             sleep(4)
             self.measured_time.value = time()
@@ -182,10 +182,10 @@ class PressureSensor(I2CSensorBase):
         self.altitude_meters = Value("d", 0.0)
         super().__init__(bus, address)
 
-    def setup(self):
+    def _setup(self):
         pass
 
-    def process(self):
+    def _process(self):
         while True:
             sleep(2.5)
             self.measured_time.value = time()
@@ -241,10 +241,10 @@ class Accelerometer(I2CSensorBase):
         self.accelerometer_z_mps2 = Value("d", 0.0)
         super().__init__(bus, address)
 
-    def setup(self):
+    def _setup(self):
         pass
 
-    def process(self):
+    def _process(self):
         while True:
             sleep(3)
             self.measured_time.value = time()
@@ -297,10 +297,10 @@ class TemperatureHumiditySensor(I2CSensorBase):
         self.humidity_percent = Value("d", 0.0)
         super().__init__(bus, address)
 
-    def setup(self):
+    def _setup(self):
         pass
 
-    def process(self):
+    def _process(self):
         while True:
             sleep(0.5)
             self.measured_time.value = time()
@@ -349,10 +349,10 @@ class PulseWaveSensor(I2CSensorBase):
         self.heart_bpm_fifo_1204hz = Value("d", 0.0)
         super().__init__(bus, address)
 
-    def setup(self):
+    def _setup(self):
         pass
 
-    def process(self):
+    def _process(self):
         while True:
             sleep(10)
             self.measured_time.value = time()
