@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from ctypes import c_bool
-from multiprocessing import Process, Value, log_to_stderr, get_logger
+from multiprocessing import Process, Value, get_logger
 from multiprocessing.sharedctypes import Synchronized
 from smbus2 import SMBus
 from time import sleep, time
+from json import dumps
 import logging
 
 
@@ -48,7 +49,7 @@ class I2CSensorBase(ABC):
             print(type(e), e)
             self._close()
         else:
-            self._p = Process(target=self._process, args=())
+            self._p = Process(name=self.__class__.__name__, target=self._process, args=())
             self._p.start()
 
     @abstractmethod
@@ -77,7 +78,7 @@ class I2CSensorBase(ABC):
             while self._is_active.value:
                 sleep(2)
                 self._update()
-                self._logger.debug(self.status_dict)
+                self._logger.debug(dumps(self.status_dict, indent=4, separators=(",", ": ")))
         except KeyboardInterrupt:
             pass
         except Exception as e:
@@ -398,9 +399,19 @@ class PulseWaveSensor(I2CSensorBase):
 
 
 if __name__ == "__main__":
-    log_to_stderr()
     logger = get_logger()
     logger.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter("[%(asctime)s] %(processName)s %(levelname)s -> %(message)s")
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+    fh = logging.FileHandler("a.log")
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
 
     Th1 = Thermistor(0x40, logger)
     Th2 = Thermistor(0x60, logger)
