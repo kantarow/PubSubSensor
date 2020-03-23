@@ -1,4 +1,3 @@
-# TODO: センサーを統括して辞書を返すマネージャークラス(別ファイルに)
 from multiprocessing import Process, Value
 from multiprocessing.sharedctypes import Synchronized
 from time import sleep, time
