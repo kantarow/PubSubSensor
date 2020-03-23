@@ -40,6 +40,7 @@ class I2CSensorBase(ABC):
         self._p = Process(target=self._process, args=())
         self._p.start()
 
+    # TODO: close関数の実装。busのcloseとis_activeをFalseに
     @abstractmethod
     def _setup(self):
         # TODO: 何回かリトライしてだめだったらエラーを吐いたり接続せずに進めたりする(引数とかの調整はマネージャークラスでやったほうがいいかも)

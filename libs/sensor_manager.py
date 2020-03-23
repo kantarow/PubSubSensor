@@ -18,13 +18,23 @@ class SensorManager:
         for i, sensor in enumerate(sensors):
             self.sensors.append((i, sensor))
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, ex_type, ex_value, trace):
+        for i, sensor in self.sensors:
+            try:
+                sensor._bus.close()
+            except Exception:
+                print("Exception!")
+
     @property
     def status_dict(self):
         return {key: sensor.status_dict for key, sensor in self.sensors}
 
 
 if __name__ == '__main__':
-    sm = SensorManager(PressureSensor(0x00), PressureSensor(0x00))
-    for i in range(5):
-        sleep(10)
-        print(sm.status_dict)
+    with SensorManager(PressureSensor(0x00), PressureSensor(0x00)) as sm:
+        for i in range(5):
+            print(sm.status_dict)
+            sleep(1)
