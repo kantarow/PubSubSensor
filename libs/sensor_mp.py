@@ -20,6 +20,10 @@ class I2CSensorBase(ABC):
         センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
+
+    Notes
+    -----
+    このクラスのサブクラスとしてセンサーを表すクラスを定義する場合、@abstractmethodがついているメソッドのみをオーバーライドすればよいです
     """
 
     @abstractmethod
@@ -45,17 +49,23 @@ class I2CSensorBase(ABC):
             self._p = Process(target=self._process, args=())
             self._p.start()
 
-    def _close(self):
-        if isinstance(self._bus, SMBus):
-            self._bus.close()
-        self._is_active.value = False
-
     @abstractmethod
     def _setup(self):
         """
         接続前のモード設定などをする
         """
         pass
+
+    @abstractmethod
+    def hoge(self):
+        """
+        センサーの値を読みメンバを更新する
+        """
+        pass
+
+    """
+    以下はオーバーライドしない想定のメソッド
+    """
 
     def _process(self):
         """
@@ -72,12 +82,13 @@ class I2CSensorBase(ABC):
         finally:
             self._close()
 
-    @abstractmethod
-    def hoge(self):
+    def _close(self):
         """
-        センサーの値を読みメンバを更新する
+        センサー自体を閉じるメソッド。i2cのバスを閉じて、プロセスの実行も止める
         """
-        pass
+        if isinstance(self._bus, SMBus):
+            self._bus.close()
+        self._is_active.value = False
 
     @property
     def status_dict(self):
@@ -141,6 +152,8 @@ class Thermistor(I2CSensorBase):
         i2cのバス
     _address : int
         センサーのi2cアドレス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
     """
@@ -151,7 +164,6 @@ class Thermistor(I2CSensorBase):
 
         Parameters
         ----------
-
         _address : int
             センサーのi2cアドレス
         """
@@ -192,6 +204,8 @@ class PressureSensor(I2CSensorBase):
         i2cのバス
     _address : int
         センサーのi2cアドレス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
     """
@@ -246,6 +260,8 @@ class Accelerometer(I2CSensorBase):
         i2cのバス
     _address : int
         センサーのi2cアドレス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
     """
@@ -299,6 +315,8 @@ class TemperatureHumiditySensor(I2CSensorBase):
         i2cのバス
     _address : int
         センサーのi2cアドレス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
     """
@@ -348,6 +366,8 @@ class PulseWaveSensor(I2CSensorBase):
         i2cのバス
     _address : int
         センサーのi2cアドレス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
     """
