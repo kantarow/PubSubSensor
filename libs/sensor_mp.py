@@ -36,8 +36,7 @@ class I2CSensorBase(ABC):
         _address : int
             センサーのi2cアドレス
         """
-        # self._bus = SMBus(1)
-        self._bus = "bus"
+        self._bus = SMBus(1)
         self._address = address
         self._is_active = Value(c_bool, True)
         try:
@@ -320,7 +319,7 @@ class TemperatureHumiditySensor(I2CSensorBase):
         センサーの値を取得してメンバを更新していく並列プロセス
     """
 
-    def __init__(self, address):
+    def __init__(self, address=0x45):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -337,13 +336,24 @@ class TemperatureHumiditySensor(I2CSensorBase):
         super().__init__(address)
 
     def _setup(self):
-        pass
+        self._bus.write_byte_data(self._address, 0x21, 0x30)
+        sleep(0.5)
 
     def _update(self):
+        self._bus.write_byte_data(self._address, 0xE0, 0x00)
+        data = self._bus.read_i2c_block_data(self._address, 0x00, 6)
         self.measured_time.value = time()
-        self.temperature_celsius.value += 1
-        self.humidity_percent.value += 1
-        sleep(0.5)
+        self.temperature_celsius.value = self.__convert_temperature(data[0], data[1])
+        self.humidity_percent.value = self.__convert_humidity(data[3], data[4])
+        sleep(0.05)
+
+    def __convert_temperature(self, msb, lsb):
+        mlsb = ((msb << 8) | lsb)
+        return (-45 + 175 * int(str(mlsb), 10) / (pow(2, 16) - 1))
+
+    def __convert_humidity(self, msb, lsb):
+        mlsb = ((msb << 8) | lsb)
+        return (100 * int(str(mlsb), 10) / (pow(2, 16) - 1))
 
 
 class PulseWaveSensor(I2CSensorBase):
@@ -395,20 +405,20 @@ class PulseWaveSensor(I2CSensorBase):
 
 
 if __name__ == "__main__":
-    Th1 = Thermistor(0x40)
-    Th2 = Thermistor(0x60)
-    Pr = PressureSensor(0x80)
-    Ac = Accelerometer(0xa1)
-    THs = TemperatureHumiditySensor(0x15)
-    Pw = PulseWaveSensor(0x25)
+    # Th1 = Thermistor(0x40)
+    # Th2 = Thermistor(0x60)
+    # Pr = PressureSensor(0x80)
+    # Ac = Accelerometer(0xa1)
+    THs = TemperatureHumiditySensor()
+    # Pw = PulseWaveSensor(0x25)
     while True:
         try:
-            sleep(4)
-            print(Th1.status_dict)
-            print(Th2.status_dict)
-            print(Pr.status_dict)
-            print(Ac.status_dict)
+            sleep(2)
+            # print(Th1.status_dict)
+            # print(Th2.status_dict)
+            # print(Pr.status_dict)
+            # print(Ac.status_dict)
             print(THs.status_dict)
-            print(Pw.status_dict)
+            # print(Pw.status_dict)
         except KeyboardInterrupt:
             break
