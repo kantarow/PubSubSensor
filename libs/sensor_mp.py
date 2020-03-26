@@ -413,7 +413,7 @@ if __name__ == "__main__":
     # Pw = PulseWaveSensor(0x25)
     while True:
         try:
-            sleep(2)
+            sleep(1)
             # print(Th1.status_dict)
             # print(Th2.status_dict)
             # print(Pr.status_dict)
