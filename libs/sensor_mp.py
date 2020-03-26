@@ -1,3 +1,4 @@
+# XXX: 変換前のデータの配列を返す__read_datas関数とそれを変換する__convert_[element]関数を実装する
 from abc import ABC, abstractmethod
 from ctypes import c_bool
 from multiprocessing import Process, Value
@@ -41,6 +42,7 @@ class I2CSensorBase(ABC):
         self._is_active = Value(c_bool, True)
         try:
             self._setup()
+            sleep(1)
         except Exception as e:
             print(type(e), e)
             self._close()
@@ -72,8 +74,8 @@ class I2CSensorBase(ABC):
         """
         try:
             while self._is_active.value:
-                sleep(2)
                 self._update()
+                sleep(1)
         except KeyboardInterrupt:
             pass
         except Exception as e:
@@ -337,15 +339,18 @@ class TemperatureHumiditySensor(I2CSensorBase):
 
     def _setup(self):
         self._bus.write_byte_data(self._address, 0x21, 0x30)
-        sleep(0.5)
 
     def _update(self):
+        t, h = self.__read_datas()
+
+        self.measured_time.value = time()
+        self.temperature_celsius.value = self.__convert_temperature(*t)
+        self.humidity_percent.value = self.__convert_humidity(*h)
+
+    def __read_datas(self):
         self._bus.write_byte_data(self._address, 0xE0, 0x00)
         data = self._bus.read_i2c_block_data(self._address, 0x00, 6)
-        self.measured_time.value = time()
-        self.temperature_celsius.value = self.__convert_temperature(data[0], data[1])
-        self.humidity_percent.value = self.__convert_humidity(data[3], data[4])
-        sleep(0.05)
+        return (data[0], data[1]), (data[3], data[4])
 
     def __convert_temperature(self, msb, lsb):
         mlsb = ((msb << 8) | lsb)
@@ -418,7 +423,7 @@ if __name__ == "__main__":
             # print(Th2.status_dict)
             # print(Pr.status_dict)
             # print(Ac.status_dict)
-            print(THs.status_dict)
+            print(THs.status_dict, THs.is_active)
             # print(Pw.status_dict)
         except KeyboardInterrupt:
             break
