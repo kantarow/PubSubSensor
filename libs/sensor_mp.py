@@ -407,7 +407,7 @@ class PulseWaveSensor(I2CSensorBase):
     外部ライブラリを使うのでアドレスやSMBusは渡さない
     """
 
-    def __init__(self):
+    def __init__(self, address=None):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
         """
@@ -415,7 +415,7 @@ class PulseWaveSensor(I2CSensorBase):
         self.model_number = "BH1792GLC"
         self.measured_time = Value("d", 0.0)
         self.heart_bpm_fifo_1204hz = Value("d", 0.0)
-        super().__init__()
+        super().__init__(address)
 
     def _setup(self):
         self._bus.close()
@@ -439,18 +439,18 @@ class PulseWaveSensor(I2CSensorBase):
 if __name__ == "__main__":
     # Th1 = Thermistor(0x40)
     # Th2 = Thermistor(0x60)
-    Pr = PressureSensor()
+    # Pr = PressureSensor()
     # Ac = Accelerometer(0xa1)
-    THs = TemperatureHumiditySensor()
+    # THs = TemperatureHumiditySensor()
     Pw = PulseWaveSensor()
     while True:
         try:
             sleep(1)
             # print(Th1.status_dict)
             # print(Th2.status_dict)
-            print(Pr.status_dict, Pr.is_active)
+            # print(Pr.status_dict, Pr.is_active)
             # print(Ac.status_dict)
-            print(THs.status_dict, THs.is_active)
+            # print(THs.status_dict, THs.is_active)
             print(Pw.status_dict, Pw.is_active)
         except KeyboardInterrupt:
             break
