@@ -10,6 +10,8 @@ paho-mqtt = "*"
 smbus2 = "*"
 adafruit-ads1x15 = "*"
 pyserial = "*"
+rpi = "*"
+rpi-gpio = "*"
 
 [requires]
 python_version = "3.7"

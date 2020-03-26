@@ -211,7 +211,7 @@ class PressureSensor(I2CSensorBase):
         センサーの値を取得してメンバを更新していく並列プロセス
     """
 
-    def __init__(self, address):
+    def __init__(self, address=0x5C):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -229,14 +229,29 @@ class PressureSensor(I2CSensorBase):
         super().__init__(address)
 
     def _setup(self):
-        pass
+        self._bus.write_byte_data(self._address, 0x20, 0xC0)  # 25Hz
 
     def _update(self):
+        press, temp = self.__read_datas()
+
         self.measured_time.value = time()
-        self.pressure_hpa.value += 0.1
-        self.temperature_celsius.value += 0.1
-        self.altitude_meters.value += 0.1
-        sleep(2.5)
+        self.pressure_hpa.value = self.__convert_pressure(press)
+        self.temperature_celsius.value = self.__convert_temperature(temp)
+        self.altitude_meters.value = self.__convert_altitude(self.pressure_hpa.value, self.temperature_celsius.value)
+
+    def __read_datas(self):
+        datas = [self._bus.read_byte_data(self._address, 0x28 + i) for i in range(5)]
+        return datas[0:3], datas[3:5]
+
+    def __convert_pressure(self, data):
+        return (data[2] << 16 | data[1] << 8 | data[0]) / 4096
+
+    def __convert_temperature(self, data):
+        return 42.5 + ((data[1] << 8 | data[0]) - 65535) / 480
+
+    def __convert_altitude(self, press, temp):
+        altimeter_setting_mbar = 1013.25
+        return ((pow(press / altimeter_setting_mbar, 0.190263) - 1) * temp) / 0.0065
 
 
 class Accelerometer(I2CSensorBase):
@@ -341,22 +356,24 @@ class TemperatureHumiditySensor(I2CSensorBase):
         self._bus.write_byte_data(self._address, 0x21, 0x30)
 
     def _update(self):
-        t, h = self.__read_datas()
+        temp, humid = self.__read_datas()
 
         self.measured_time.value = time()
-        self.temperature_celsius.value = self.__convert_temperature(*t)
-        self.humidity_percent.value = self.__convert_humidity(*h)
+        self.temperature_celsius.value = self.__convert_temperature(temp)
+        self.humidity_percent.value = self.__convert_humidity(humid)
 
     def __read_datas(self):
         self._bus.write_byte_data(self._address, 0xE0, 0x00)
-        data = self._bus.read_i2c_block_data(self._address, 0x00, 6)
-        return (data[0], data[1]), (data[3], data[4])
+        datas = self._bus.read_i2c_block_data(self._address, 0x00, 6)
+        return (datas[0:2]), (datas[3:5])
 
-    def __convert_temperature(self, msb, lsb):
+    def __convert_temperature(self, data):
+        msb, lsb = data
         mlsb = ((msb << 8) | lsb)
         return (-45 + 175 * int(str(mlsb), 10) / (pow(2, 16) - 1))
 
-    def __convert_humidity(self, msb, lsb):
+    def __convert_humidity(self, data):
+        msb, lsb = data
         mlsb = ((msb << 8) | lsb)
         return (100 * int(str(mlsb), 10) / (pow(2, 16) - 1))
 
@@ -412,7 +429,7 @@ class PulseWaveSensor(I2CSensorBase):
 if __name__ == "__main__":
     # Th1 = Thermistor(0x40)
     # Th2 = Thermistor(0x60)
-    # Pr = PressureSensor(0x80)
+    Pr = PressureSensor()
     # Ac = Accelerometer(0xa1)
     THs = TemperatureHumiditySensor()
     # Pw = PulseWaveSensor(0x25)
@@ -421,7 +438,7 @@ if __name__ == "__main__":
             sleep(1)
             # print(Th1.status_dict)
             # print(Th2.status_dict)
-            # print(Pr.status_dict)
+            print(Pr.status_dict, Pr.is_active)
             # print(Ac.status_dict)
             print(THs.status_dict, THs.is_active)
             # print(Pw.status_dict)
