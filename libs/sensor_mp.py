@@ -165,73 +165,6 @@ class SerialSensorBase(SensorBase):
         self._is_active.value = False
 
 
-class Thermistor(SerialSensorBase):
-    """
-    サーミスターを表すクラス
-
-    Attributes
-    ----------
-    type : str
-        センサーの種類(サーミスター)
-    model_number : str
-        センサーの型番
-    measured_time : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
-        現在保持しているデータを取得した時間
-    temperature_celsius : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
-        摂氏温度[℃]
-    _ser : serial.Serial
-        シリアルポート
-    _signal : str
-        シリアルで送る文字。一桁の数字
-    _lock : multiprocessing.Lock
-        Lockインスタンス
-    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
-        センサが値を更新しているか(問題なく動いているか)
-    _p : multiprocessing.Process
-        センサーの値を取得してメンバを更新していく並列プロセス
-    """
-
-    def __init__(self, signal, lock):
-        """
-        センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
-
-        Parameters
-        ----------
-        signal : str
-            シリアル通信で送るシグナル
-        lock : multiprocessing.Lock
-            メモリ保護のためのロック機構
-        """
-        self.type = "thermistor"
-        self.model_number = "103JT-050"
-        self.measured_time = Value("d", 0.0)
-        self.temperature_celsius = Value("d", 0.0)
-        super().__init__(signal, lock)
-
-    def _setup(self):
-        self._lock.acquire()
-        sleep(1)
-        self._ser.reset_input_buffer()
-        self._ser.reset_output_buffer()
-        self._lock.release()
-
-    def _update(self):
-        temp = self.__read_datas()
-
-        self.measured_time.value = time()
-        self.temperature_celsius.value = self.__convert_temperature(temp)
-
-    def __read_datas(self):
-        self._lock.acquire()
-        self._ser.write(bytes(self._signal, "utf-8"))
-        datas = self._ser.readline()
-        self._lock.release()
-        return datas.decode("utf-8").rstrip()
-
-    def __convert_temperature(self, data):
-        return float(data)
-
-
 class PressureSensor(I2CSensorBase):
     """
     圧力センサーを表すクラス
@@ -301,81 +234,6 @@ class PressureSensor(I2CSensorBase):
     def __convert_altitude(self, press, temp):
         altimeter_setting_mbar = 1013.25
         return ((pow(press / altimeter_setting_mbar, 0.190263) - 1) * temp) / 0.0065
-
-
-class Accelerometer(SerialSensorBase):
-    """
-    加速度センサーを表すクラス
-
-    Attributes
-    ----------
-    type : str
-        センサーの種類(加速度センサー)
-    model_number : str
-        センサーの型番
-    measured_time : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
-        現在保持しているデータを取得した時間
-    accelerometer_x_mps2 : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
-        x軸方向の加速度
-    accelerometer_y_mps2 : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
-        y軸方向の加速度
-    accelerometer_z_mps2 : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
-        z軸方向の加速度
-    _ser : serial.Serial
-        シリアルポート
-    _signal : str
-        シリアルで送る文字。一桁の数字
-    _lock : multiprocessing.Lock
-        Lockインスタンス
-    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
-        センサが値を更新しているか(問題なく動いているか)
-    _p : multiprocessing.Process
-        センサーの値を取得してメンバを更新していく並列プロセス
-    """
-
-    def __init__(self, signal, lock):
-        """
-        センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
-
-        Parameters
-        ----------
-        signal : str
-            シリアル通信で送るシグナル
-        lock : multiprocessing.Lock
-            メモリ保護のためのロック機構
-        """
-        self.type = "accelerometer"
-        self.model_number = "KX224-1053"
-        self.measured_time = Value("d", 0.0)
-        self.accelerometer_x_mps2 = Value("d", 0.0)
-        self.accelerometer_y_mps2 = Value("d", 0.0)
-        self.accelerometer_z_mps2 = Value("d", 0.0)
-        super().__init__(signal, lock)
-
-    def _setup(self):
-        self._lock.acquire()
-        sleep(1)
-        self._ser.reset_input_buffer()
-        self._ser.reset_output_buffer()
-        self._lock.release()
-
-    def _update(self):
-        x, y, z = self.__read_datas()
-
-        self.measured_time.value = time()
-        self.accelerometer_x_mps2.value = self.__convert_acceleration(x)
-        self.accelerometer_y_mps2.value = self.__convert_acceleration(y)
-        self.accelerometer_z_mps2.value = self.__convert_acceleration(z)
-
-    def __read_datas(self):
-        self._lock.acquire()
-        self._ser.write(bytes(self._signal, "utf-8"))
-        datas = self._ser.readline()
-        self._lock.release()
-        return datas.decode("utf-8").rstrip().split(",")
-
-    def __convert_acceleration(self, data):
-        return float(data)
 
 
 class TemperatureHumiditySensor(I2CSensorBase):
@@ -501,6 +359,148 @@ class PulseWaveSensor(I2CSensorBase):
 
     def __convert_heartbeat(self, data):
         return float(data[0])
+
+
+class Thermistor(SerialSensorBase):
+    """
+    サーミスターを表すクラス
+
+    Attributes
+    ----------
+    type : str
+        センサーの種類(サーミスター)
+    model_number : str
+        センサーの型番
+    measured_time : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        現在保持しているデータを取得した時間
+    temperature_celsius : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        摂氏温度[℃]
+    _ser : serial.Serial
+        シリアルポート
+    _signal : str
+        シリアルで送る文字。一桁の数字
+    _lock : multiprocessing.Lock
+        Lockインスタンス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
+    _p : multiprocessing.Process
+        センサーの値を取得してメンバを更新していく並列プロセス
+    """
+
+    def __init__(self, signal, lock):
+        """
+        センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
+
+        Parameters
+        ----------
+        signal : str
+            シリアル通信で送るシグナル
+        lock : multiprocessing.Lock
+            メモリ保護のためのロック機構
+        """
+        self.type = "thermistor"
+        self.model_number = "103JT-050"
+        self.measured_time = Value("d", 0.0)
+        self.temperature_celsius = Value("d", 0.0)
+        super().__init__(signal, lock)
+
+    def _setup(self):
+        self._lock.acquire()
+        sleep(1)
+        self._ser.reset_input_buffer()
+        self._ser.reset_output_buffer()
+        self._lock.release()
+
+    def _update(self):
+        temp = self.__read_datas()
+
+        self.measured_time.value = time()
+        self.temperature_celsius.value = self.__convert_temperature(temp)
+
+    def __read_datas(self):
+        self._lock.acquire()
+        self._ser.write(bytes(self._signal, "utf-8"))
+        datas = self._ser.readline()
+        self._lock.release()
+        return datas.decode("utf-8").rstrip()
+
+    def __convert_temperature(self, data):
+        return float(data)
+
+
+class Accelerometer(SerialSensorBase):
+    """
+    加速度センサーを表すクラス
+
+    Attributes
+    ----------
+    type : str
+        センサーの種類(加速度センサー)
+    model_number : str
+        センサーの型番
+    measured_time : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        現在保持しているデータを取得した時間
+    accelerometer_x_mps2 : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        x軸方向の加速度
+    accelerometer_y_mps2 : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        y軸方向の加速度
+    accelerometer_z_mps2 : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        z軸方向の加速度
+    _ser : serial.Serial
+        シリアルポート
+    _signal : str
+        シリアルで送る文字。一桁の数字
+    _lock : multiprocessing.Lock
+        Lockインスタンス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
+    _p : multiprocessing.Process
+        センサーの値を取得してメンバを更新していく並列プロセス
+    """
+
+    def __init__(self, signal, lock):
+        """
+        センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
+
+        Parameters
+        ----------
+        signal : str
+            シリアル通信で送るシグナル
+        lock : multiprocessing.Lock
+            メモリ保護のためのロック機構
+        """
+        self.type = "accelerometer"
+        self.model_number = "KX224-1053"
+        self.measured_time = Value("d", 0.0)
+        self.accelerometer_x_mps2 = Value("d", 0.0)
+        self.accelerometer_y_mps2 = Value("d", 0.0)
+        self.accelerometer_z_mps2 = Value("d", 0.0)
+        super().__init__(signal, lock)
+
+    def _setup(self):
+        self._lock.acquire()
+        sleep(1)
+        self._ser.reset_input_buffer()
+        self._ser.reset_output_buffer()
+        self._lock.release()
+
+    def _update(self):
+        x, y, z = self.__read_datas()
+
+        self.measured_time.value = time()
+        self.accelerometer_x_mps2.value = self.__convert_acceleration(x)
+        self.accelerometer_y_mps2.value = self.__convert_acceleration(y)
+        self.accelerometer_z_mps2.value = self.__convert_acceleration(z)
+
+    def __read_datas(self):
+        self._lock.acquire()
+        self._ser.write(bytes(self._signal, "utf-8"))
+        datas = self._ser.readline()
+        self._lock.release()
+        return datas.decode("utf-8").rstrip().split(",")
+
+    def __convert_acceleration(self, data):
+        return float(data)
 
 
 if __name__ == "__main__":
