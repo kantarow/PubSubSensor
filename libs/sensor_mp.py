@@ -18,9 +18,6 @@ class SensorBase(ABC):
         センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
-    Notes
-    -----
-    このクラスのサブクラスとしてセンサーを表すクラスを定義する場合、@abstractmethodがついているメソッドのみをオーバーライドすればよいです
     """
 
     @abstractmethod
@@ -128,6 +125,12 @@ class I2CSensorBase(SensorBase):
     I2Cセンサー
     """
     def __init__(self, address):
+        """
+        Parameters
+        ----------
+        address : int
+            I2Cスレーブのアドレス
+        """
         self._bus = SMBus(1)
         self._address = address
         super().__init__()
@@ -143,6 +146,14 @@ class SerialSensorBase(SensorBase):
     シリアルセンサー
     """
     def __init__(self, signal, lock):
+        """
+        Parameters
+        ----------
+        signal : str
+            シリアル通信で送るシグナル
+        lock : multiprocessing.Lock
+            メモリ保護のためのロック機構
+        """
         self._ser = Serial("/dev/ttyACM0", 9600)
         self._signal = signal
         self._lock = lock
@@ -168,10 +179,12 @@ class Thermistor(SerialSensorBase):
         現在保持しているデータを取得した時間
     temperature_celsius : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         摂氏温度[℃]
-    _bus : smbus2.SMBus
-        i2cのバス
-    _address : int
-        センサーのi2cアドレス
+    _ser : serial.Serial
+        シリアルポート
+    _signal : str
+        シリアルで送る文字。一桁の数字
+    _lock : multiprocessing.Lock
+        Lockインスタンス
     _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
@@ -184,10 +197,11 @@ class Thermistor(SerialSensorBase):
 
         Parameters
         ----------
-        _address : int
-            センサーのi2cアドレス
+        signal : str
+            シリアル通信で送るシグナル
+        lock : multiprocessing.Lock
+            メモリ保護のためのロック機構
         """
-        self._ser = Serial("/dev/ttyACM0", 9600)
         self.type = "thermistor"
         self.model_number = "103JT-050"
         self.measured_time = Value("d", 0.0)
@@ -307,10 +321,12 @@ class Accelerometer(SerialSensorBase):
         y軸方向の加速度
     accelerometer_z_mps2 : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         z軸方向の加速度
-    _bus : smbus2.SMBus
-        i2cのバス
-    _address : int
-        センサーのi2cアドレス
+    _ser : serial.Serial
+        シリアルポート
+    _signal : str
+        シリアルで送る文字。一桁の数字
+    _lock : multiprocessing.Lock
+        Lockインスタンス
     _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
@@ -323,8 +339,10 @@ class Accelerometer(SerialSensorBase):
 
         Parameters
         ----------
-        _address : int
-            センサーのi2cアドレス
+        signal : str
+            シリアル通信で送るシグナル
+        lock : multiprocessing.Lock
+            メモリ保護のためのロック機構
         """
         self.type = "accelerometer"
         self.model_number = "KX224-1053"
