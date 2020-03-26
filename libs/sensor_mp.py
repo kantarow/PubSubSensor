@@ -1,4 +1,3 @@
-# XXX: 変換前のデータの配列を返す__read_datas関数とそれを変換する__convert_[element]関数を実装する
 from abc import ABC, abstractmethod
 from bh1792glc.driver import BH1792GLCDriver
 from ctypes import c_bool
@@ -9,38 +8,26 @@ from smbus2 import SMBus
 from time import sleep, time
 
 
-class I2CSensorBase(ABC):
+class SensorBase(ABC):
     """
-    I2Cセンサーを表す抽象基底クラス
+    センサーを表す抽象基底クラス
 
     Attributes
     ----------
-    _bus : smbus2.SMBus
-        i2cのバス
-    _address : int
-        センサーのi2cアドレス
     _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
-
     Notes
     -----
     このクラスのサブクラスとしてセンサーを表すクラスを定義する場合、@abstractmethodがついているメソッドのみをオーバーライドすればよいです
     """
 
     @abstractmethod
-    def __init__(self, *, address=None):
+    def __init__(self):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
-
-        Parameters
-        ----------
-        _address : int
-            センサーのi2cアドレス
         """
-        self._bus = SMBus(1)
-        self._address = address
         self._is_active = Value(c_bool, True)
         try:
             self._setup()
@@ -51,6 +38,13 @@ class I2CSensorBase(ABC):
         else:
             self._p = Process(target=self._process, args=())
             self._p.start()
+
+    @abstractmethod
+    def _close(self):
+        """
+        センサー自体を閉じるメソッド。i2cのバスを閉じて、プロセスの実行も止める
+        """
+        self._is_active.value = False
 
     @abstractmethod
     def _setup(self):
@@ -84,19 +78,6 @@ class I2CSensorBase(ABC):
             print(type(e), e)
         finally:
             self._close()
-
-    def _close(self):
-        """
-        センサー自体を閉じるメソッド。i2cのバスを閉じて、プロセスの実行も止める
-        """
-        if isinstance(self._bus, SMBus):
-            self._bus.close()
-        try:
-            if isinstance(self._ser, Serial):
-                self._ser.close()
-        except AttributeError:
-            pass
-        self._is_active.value = False
 
     @property
     def status_dict(self):
@@ -142,7 +123,38 @@ class I2CSensorBase(ABC):
         return self._is_active.value
 
 
-class Thermistor(I2CSensorBase):
+class I2CSensorBase(SensorBase):
+    """
+    I2Cセンサー
+    """
+    def __init__(self, address):
+        self._bus = SMBus(1)
+        self._address = address
+        super().__init__()
+
+    def _close(self):
+        if isinstance(self._bus, SMBus):
+            self._bus.close()
+        self._is_active.value = False
+
+
+class SerialSensorBase(SensorBase):
+    """
+    シリアルセンサー
+    """
+    def __init__(self, signal, lock):
+        self._ser = Serial("/dev/ttyACM0", 9600)
+        self._signal = signal
+        self._lock = lock
+        super().__init__()
+
+    def _close(self):
+        if isinstance(self._ser, Serial):
+            self._bus.close()
+        self._is_active.value = False
+
+
+class Thermistor(SerialSensorBase):
     """
     サーミスターを表すクラス
 
@@ -279,7 +291,7 @@ class PressureSensor(I2CSensorBase):
         return ((pow(press / altimeter_setting_mbar, 0.190263) - 1) * temp) / 0.0065
 
 
-class Accelerometer(I2CSensorBase):
+class Accelerometer(SerialSensorBase):
     """
     加速度センサーを表すクラス
 
@@ -480,10 +492,10 @@ class PulseWaveSensor(I2CSensorBase):
 
 if __name__ == "__main__":
     lock = Lock()
-    Th1 = Thermistor(signal="1", lock=lock)
-    Th2 = Thermistor(signal="2", lock=lock)
+    Th1 = Thermistor("1", lock)
+    Th2 = Thermistor("2", lock)
     Pr = PressureSensor()
-    Ac = Accelerometer(signal="5", lock=lock)
+    Ac = Accelerometer("5", lock)
     THs = TemperatureHumiditySensor()
     Pw = PulseWaveSensor()
     while True:
