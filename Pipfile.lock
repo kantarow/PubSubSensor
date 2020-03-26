@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "9f96ce76ed8d29815ef82089200ffbb4b381e7b32871c7410cf761279e31982b"
+            "sha256": "b24c30ac1385f52bbf59ffcb09c35549ea46a4d9c3e237f297c8c16fe71abea4"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -16,6 +16,26 @@
         ]
     },
     "default": {
+        "adafruit-ads1x15": {
+            "hashes": [
+                "sha256:058021475c51d8fad6ce8417d69ca5aea71dec9d9e5292e6b83b6cc8b338dcd3",
+                "sha256:2076c114e3ca938ef5de13c608f2b28c517ca3d53407432fd470118556ab3feb"
+            ],
+            "index": "pypi",
+            "version": "==1.0.2"
+        },
+        "adafruit-gpio": {
+            "hashes": [
+                "sha256:d6465b92c866c51ca8f3bc1e8f2ec36f5ccdb46d0fd54101c1109756d4a2dcd0"
+            ],
+            "version": "==1.0.3"
+        },
+        "adafruit-pureio": {
+            "hashes": [
+                "sha256:b67587ed3c4dc90bd0e9b988587efa66b4466abf71eb0dcbcd4695e7e4350326"
+            ],
+            "version": "==1.0.4"
+        },
         "paho-mqtt": {
             "hashes": [
                 "sha256:e3d286198baaea195c8b3bc221941d25a3ab0e1507fc1779bdb7473806394be4"
@@ -29,6 +49,12 @@
             ],
             "index": "pypi",
             "version": "==0.3.0"
+        },
+        "spidev": {
+            "hashes": [
+                "sha256:4314e52f573d95233c907f307558893313a8a606e197e77bb711526b0e179e80"
+            ],
+            "version": "==3.4"
         }
     },
     "develop": {}
