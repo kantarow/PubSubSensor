@@ -1,6 +1,4 @@
-import time
 import smbus2
-import struct
 
 
 class i2cInterface(object):

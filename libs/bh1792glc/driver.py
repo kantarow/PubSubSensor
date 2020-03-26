@@ -1,9 +1,8 @@
 """
     Driver for BH1792GLC Pulse Sensor
 """
-import struct
 from bh1792glc import bh1792glc_registers
-from bh1792glc.i2c_interface import *
+from bh1792glc.i2c_interface import i2cInterface
 import logging
 import time
 import RPi.GPIO as GPIO
@@ -43,7 +42,7 @@ class BH1792GLCDriver(i2cInterface):
         self.connected = True
         resp = self.read_register(r.BH1792GLC_PART_ID)
         if resp == b.BH1792GLC_PART_ID_PART_ID_ID:
-            logging.info('detected BH1792GLC')
+            # logging.info('detected BH1792GLC')
             return 1
         self.connected = False
         return 0
@@ -101,7 +100,7 @@ class BH1792GLCDriver(i2cInterface):
         # Low priority
         # if interrupt raised or we need to clear the FIFO
         if (not GPIO.input(self.int_gpio) or (self.sync_counter == 2)):
-            #lev = self.read_register(r.BH1792GLC_FIFO_LEV)
+            # lev = self.read_register(r.BH1792GLC_FIFO_LEV)
             # if lev > 0:
             # Read from the FIFO
             reads = 0
@@ -119,7 +118,7 @@ class BH1792GLCDriver(i2cInterface):
                 val_on.append(self.read_short(r.BH1792GLC_FIFODATA1_LSB))  # LED ON
                 reads += 1
             # Read FIFO_LEV
-            #lev = self.read_register(r.BH1792GLC_FIFO_LEV)
+            # lev = self.read_register(r.BH1792GLC_FIFO_LEV)
 
             # New parameters?
             # LED_CURRENT1and LED_CURRENT2 can be changed during measurement.
@@ -187,13 +186,14 @@ class BH1792GLCDriver(i2cInterface):
     def measure_nonsync_start(self,
                               current=40,
                               threshold=0x300):
-        """ Non synchronized mode is only done using IR
-            threshold = Compare IRDATA_LEDON[15:4] and TH_IR[15:4] when updating data. 
+        """
+        Non synchronized mode is only done using IR
+            threshold = Compare IRDATA_LEDON[15:4] and TH_IR[15:4] when updating data.
                         Interruption occurs when IRDATA_LEDON[15:4] is TH_IR[15:4] or more.
 
             Returns:
                 - IR Data Count Value during no LED emission
-                - IR Data Count Value during LED emission – IR Data Count Value during no LED emission 
+                - IR Data Count Value during LED emission – IR Data Count Value during no LED emission
         """
         # Set operation mode
         self.set_meas_mode(
@@ -275,7 +275,7 @@ class BH1792GLCDriver(i2cInterface):
         assert threshold <= 0xFFFF, 'Threshold too high.'
 
         self.write_short(r.BH1792GLC_MEAS_CONTROL4_LSB, threshold)
-        #msb = threshold >> 8
-        #lsb = threshold & 0xff
-        #self.write_register(r.BH1792GLC_MEAS_CONTROL4_LSB, lsb)
-        #self.write_register(r.BH1792GLC_MEAS_CONTROL4_MSB, msb)
+        # msb = threshold >> 8
+        # lsb = threshold & 0xff
+        # self.write_register(r.BH1792GLC_MEAS_CONTROL4_LSB, lsb)
+        # self.write_register(r.BH1792GLC_MEAS_CONTROL4_MSB, msb)
