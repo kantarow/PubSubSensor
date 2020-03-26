@@ -178,7 +178,7 @@ class Thermistor(SerialSensorBase):
         センサーの値を取得してメンバを更新していく並列プロセス
     """
 
-    def __init__(self, address=None, signal=None, lock=None):
+    def __init__(self, signal, lock):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -188,13 +188,11 @@ class Thermistor(SerialSensorBase):
             センサーのi2cアドレス
         """
         self._ser = Serial("/dev/ttyACM0", 9600)
-        self._lock = lock
-        self._signal = signal
         self.type = "thermistor"
         self.model_number = "103JT-050"
         self.measured_time = Value("d", 0.0)
         self.temperature_celsius = Value("d", 0.0)
-        super().__init__()
+        super().__init__(signal, lock)
 
     def _setup(self):
         self._lock.acquire()
@@ -263,7 +261,7 @@ class PressureSensor(I2CSensorBase):
         self.pressure_hpa = Value("d", 0.0)
         self.temperature_celsius = Value("d", 0.0)
         self.altitude_meters = Value("d", 0.0)
-        super().__init__(address=address)
+        super().__init__(address)
 
     def _setup(self):
         self._bus.write_byte_data(self._address, 0x20, 0xC0)  # 25Hz
@@ -319,7 +317,7 @@ class Accelerometer(SerialSensorBase):
         センサーの値を取得してメンバを更新していく並列プロセス
     """
 
-    def __init__(self, *, signal=None, lock=None):
+    def __init__(self, signal, lock):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -328,16 +326,13 @@ class Accelerometer(SerialSensorBase):
         _address : int
             センサーのi2cアドレス
         """
-        self._signal = signal
-        self._lock = lock
-        self._ser = Serial("/dev/ttyACM0", 9600)
         self.type = "accelerometer"
         self.model_number = "KX224-1053"
         self.measured_time = Value("d", 0.0)
         self.accelerometer_x_mps2 = Value("d", 0.0)
         self.accelerometer_y_mps2 = Value("d", 0.0)
         self.accelerometer_z_mps2 = Value("d", 0.0)
-        super().__init__(address=None)
+        super().__init__(signal, lock)
 
     def _setup(self):
         self._lock.acquire()
@@ -405,7 +400,7 @@ class TemperatureHumiditySensor(I2CSensorBase):
         self.measured_time = Value("d", 0.0)
         self.temperature_celsius = Value("d", 0.0)
         self.humidity_percent = Value("d", 0.0)
-        super().__init__(address=address)
+        super().__init__(address)
 
     def _setup(self):
         self._bus.write_byte_data(self._address, 0x21, 0x30)
@@ -469,7 +464,7 @@ class PulseWaveSensor(I2CSensorBase):
         self.model_number = "BH1792GLC"
         self.measured_time = Value("d", 0.0)
         self.heart_bpm_fifo_1204hz = Value("d", 0.0)
-        super().__init__(address=address)
+        super().__init__(address)
 
     def _setup(self):
         self._bus.close()
