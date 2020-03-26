@@ -1,5 +1,6 @@
 # XXX: 変換前のデータの配列を返す__read_datas関数とそれを変換する__convert_[element]関数を実装する
 from abc import ABC, abstractmethod
+from bh1792glc.driver import BH1792GLCDriver
 from ctypes import c_bool
 from multiprocessing import Process, Value
 from multiprocessing.sharedctypes import Synchronized
@@ -400,30 +401,39 @@ class PulseWaveSensor(I2CSensorBase):
         センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
+
+    Notes
+    -----
+    外部ライブラリを使うのでアドレスやSMBusは渡さない
     """
 
-    def __init__(self, address):
+    def __init__(self):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
-
-        Parameters
-        ----------
-        _address : int
-            センサーのi2cアドレス
         """
         self.type = "pulse_wave_sensor"
         self.model_number = "BH1792GLC"
         self.measured_time = Value("d", 0.0)
         self.heart_bpm_fifo_1204hz = Value("d", 0.0)
-        super().__init__(address)
+        super().__init__()
 
     def _setup(self):
-        pass
+        self._bus.close()
+        self._drv = BH1792GLCDriver()
+        self._drv.reset()
+        self._drv.probe()
 
     def _update(self):
+        beat = self.__read_datas()
+
         self.measured_time.value = time()
-        self.heart_bpm_fifo_1204hz.value += 1
-        sleep(10)
+        self.heart_bpm_fifo_1204hz.value = self.__convert_heartbeat(beat)
+
+    def __read_datas(self):
+        return self._drv.measure_single_get()
+
+    def __convert_heartbeat(self, data):
+        return float(data[0])
 
 
 if __name__ == "__main__":
@@ -432,7 +442,7 @@ if __name__ == "__main__":
     Pr = PressureSensor()
     # Ac = Accelerometer(0xa1)
     THs = TemperatureHumiditySensor()
-    # Pw = PulseWaveSensor(0x25)
+    Pw = PulseWaveSensor()
     while True:
         try:
             sleep(1)
@@ -441,6 +451,6 @@ if __name__ == "__main__":
             print(Pr.status_dict, Pr.is_active)
             # print(Ac.status_dict)
             print(THs.status_dict, THs.is_active)
-            # print(Pw.status_dict)
+            print(Pw.status_dict, Pw.is_active)
         except KeyboardInterrupt:
             break
