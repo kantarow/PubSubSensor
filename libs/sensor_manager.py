@@ -1,9 +1,8 @@
-# TODO: センサーを統括して辞書を返すマネージャークラス
 from sensor_mp import Thermistor, PressureSensor, Accelerometer, TemperatureHumiditySensor, PulseWaveSensor
 from time import sleep
+from multiprocessing import Lock
 
 
-# IDEA: このクラスはそれ自体が複雑なセンサーとして表現したほうが自然に実装できそう
 class SensorManager:
     """
     センサーを統括してデータをまとめて扱うするためのクラス
@@ -24,10 +23,10 @@ class SensorManager:
 
     def __exit__(self, ex_type, ex_value, trace):
         for i, sensor in self.sensors:
-            try:
-                sensor._bus.close()
-            except Exception:
-                print("Exception!")
+            sensor._close()
+
+    def active_sensors(self):
+        return tuple([sensor.is_active for _, sensor in self.sensors])
 
     @property
     def status_dict(self):
@@ -36,7 +35,17 @@ class SensorManager:
 
 
 if __name__ == '__main__':
-    with SensorManager(PressureSensor(), TemperatureHumiditySensor()) as sm:
+    lock = Lock()
+    sensors = [
+        Thermistor("1", lock),
+        Thermistor("2", lock),
+        PressureSensor(),
+        Accelerometer("5", lock),
+        TemperatureHumiditySensor(),
+        PulseWaveSensor()
+    ]
+    with SensorManager(*sensors) as sm:
         for i in range(5):
             print(sm.status_dict)
+            print(sm.active_sensors)
             sleep(1)
