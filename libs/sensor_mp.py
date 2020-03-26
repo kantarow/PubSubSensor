@@ -44,7 +44,7 @@ class SensorBase(ABC):
         """
         センサー自体を閉じるメソッド。i2cのバスを閉じて、プロセスの実行も止める
         """
-        self._is_active.value = False
+        pass
 
     @abstractmethod
     def _setup(self):
@@ -150,7 +150,7 @@ class SerialSensorBase(SensorBase):
 
     def _close(self):
         if isinstance(self._ser, Serial):
-            self._bus.close()
+            self._ser.close()
         self._is_active.value = False
 
 
