@@ -15,7 +15,7 @@ class SensorManager:
 
     def __init__(self, *sensors):
         self.sensors = []
-        for i, sensor in enumerate(sensors):
+        for i, sensor in enumerate(sensors, 1):
             self.sensors.append((i, sensor))
 
     def __enter__(self):
@@ -30,8 +30,7 @@ class SensorManager:
 
     @property
     def status_dict(self):
-        return {key: sensor.status_dict for key, sensor in self.sensors}
-    # TODO: センサーが生きているかどうかのタプルを返すメソッド
+        return {str(i): sensor.status_dict for i, sensor in self.sensors}
 
 
 if __name__ == '__main__':
