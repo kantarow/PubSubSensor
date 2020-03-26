@@ -442,7 +442,7 @@ if __name__ == "__main__":
     # Pr = PressureSensor()
     # Ac = Accelerometer(0xa1)
     # THs = TemperatureHumiditySensor()
-    Pw = PulseWaveSensor()
+    # Pw = PulseWaveSensor()
     while True:
         try:
             sleep(1)
@@ -451,6 +451,6 @@ if __name__ == "__main__":
             # print(Pr.status_dict, Pr.is_active)
             # print(Ac.status_dict)
             # print(THs.status_dict, THs.is_active)
-            print(Pw.status_dict, Pw.is_active)
+            # print(Pw.status_dict, Pw.is_active)
         except KeyboardInterrupt:
             break
