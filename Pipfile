@@ -9,6 +9,7 @@ verify_ssl = true
 paho-mqtt = "*"
 smbus2 = "*"
 adafruit-ads1x15 = "*"
+pyserial = "*"
 
 [requires]
 python_version = "3.7"
