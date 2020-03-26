@@ -1,7 +1,10 @@
+# XXX: 変換前のデータの配列を返す__read_datas関数とそれを変換する__convert_[element]関数を実装する
 from abc import ABC, abstractmethod
+from bh1792glc.driver import BH1792GLCDriver
 from ctypes import c_bool
-from multiprocessing import Process, Value
+from multiprocessing import Process, Value, Lock
 from multiprocessing.sharedctypes import Synchronized
+from serial import Serial
 from smbus2 import SMBus
 from time import sleep, time
 
@@ -27,7 +30,7 @@ class I2CSensorBase(ABC):
     """
 
     @abstractmethod
-    def __init__(self, address):
+    def __init__(self, *, address=None):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -36,12 +39,12 @@ class I2CSensorBase(ABC):
         _address : int
             センサーのi2cアドレス
         """
-        # self._bus = SMBus(1)
-        self._bus = "bus"
+        self._bus = SMBus(1)
         self._address = address
         self._is_active = Value(c_bool, True)
         try:
             self._setup()
+            sleep(1)
         except Exception as e:
             print(type(e), e)
             self._close()
@@ -73,8 +76,8 @@ class I2CSensorBase(ABC):
         """
         try:
             while self._is_active.value:
-                sleep(2)
                 self._update()
+                sleep(1)
         except KeyboardInterrupt:
             pass
         except Exception as e:
@@ -88,6 +91,11 @@ class I2CSensorBase(ABC):
         """
         if isinstance(self._bus, SMBus):
             self._bus.close()
+        try:
+            if isinstance(self._ser, Serial):
+                self._ser.close()
+        except AttributeError:
+            pass
         self._is_active.value = False
 
     @property
@@ -158,7 +166,7 @@ class Thermistor(I2CSensorBase):
         センサーの値を取得してメンバを更新していく並列プロセス
     """
 
-    def __init__(self, address):
+    def __init__(self, address=None, signal=None, lock=None):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -167,19 +175,37 @@ class Thermistor(I2CSensorBase):
         _address : int
             センサーのi2cアドレス
         """
+        self._ser = Serial("/dev/ttyACM0", 9600)
+        self._lock = lock
+        self._signal = signal
         self.type = "thermistor"
         self.model_number = "103JT-050"
         self.measured_time = Value("d", 0.0)
         self.temperature_celsius = Value("d", 0.0)
-        super().__init__(address)
+        super().__init__()
 
     def _setup(self):
-        pass
+        self._lock.acquire()
+        sleep(1)
+        self._ser.reset_input_buffer()
+        self._ser.reset_output_buffer()
+        self._lock.release()
 
     def _update(self):
+        temp = self.__read_datas()
+
         self.measured_time.value = time()
-        self.temperature_celsius.value += 1
-        sleep(4)
+        self.temperature_celsius.value = self.__convert_temperature(temp)
+
+    def __read_datas(self):
+        self._lock.acquire()
+        self._ser.write(bytes(self._signal, "utf-8"))
+        datas = self._ser.readline()
+        self._lock.release()
+        return datas.decode("utf-8").rstrip()
+
+    def __convert_temperature(self, data):
+        return float(data)
 
 
 class PressureSensor(I2CSensorBase):
@@ -210,7 +236,7 @@ class PressureSensor(I2CSensorBase):
         センサーの値を取得してメンバを更新していく並列プロセス
     """
 
-    def __init__(self, address):
+    def __init__(self, address=0x5C):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -225,17 +251,32 @@ class PressureSensor(I2CSensorBase):
         self.pressure_hpa = Value("d", 0.0)
         self.temperature_celsius = Value("d", 0.0)
         self.altitude_meters = Value("d", 0.0)
-        super().__init__(address)
+        super().__init__(address=address)
 
     def _setup(self):
-        pass
+        self._bus.write_byte_data(self._address, 0x20, 0xC0)  # 25Hz
 
     def _update(self):
+        press, temp = self.__read_datas()
+
         self.measured_time.value = time()
-        self.pressure_hpa.value += 0.1
-        self.temperature_celsius.value += 0.1
-        self.altitude_meters.value += 0.1
-        sleep(2.5)
+        self.pressure_hpa.value = self.__convert_pressure(press)
+        self.temperature_celsius.value = self.__convert_temperature(temp)
+        self.altitude_meters.value = self.__convert_altitude(self.pressure_hpa.value, self.temperature_celsius.value)
+
+    def __read_datas(self):
+        datas = [self._bus.read_byte_data(self._address, 0x28 + i) for i in range(5)]
+        return datas[0:3], datas[3:5]
+
+    def __convert_pressure(self, data):
+        return (data[2] << 16 | data[1] << 8 | data[0]) / 4096
+
+    def __convert_temperature(self, data):
+        return 42.5 + ((data[1] << 8 | data[0]) - 65535) / 480
+
+    def __convert_altitude(self, press, temp):
+        altimeter_setting_mbar = 1013.25
+        return ((pow(press / altimeter_setting_mbar, 0.190263) - 1) * temp) / 0.0065
 
 
 class Accelerometer(I2CSensorBase):
@@ -266,7 +307,7 @@ class Accelerometer(I2CSensorBase):
         センサーの値を取得してメンバを更新していく並列プロセス
     """
 
-    def __init__(self, address):
+    def __init__(self, *, signal=None, lock=None):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -275,23 +316,41 @@ class Accelerometer(I2CSensorBase):
         _address : int
             センサーのi2cアドレス
         """
+        self._signal = signal
+        self._lock = lock
+        self._ser = Serial("/dev/ttyACM0", 9600)
         self.type = "accelerometer"
         self.model_number = "KX224-1053"
         self.measured_time = Value("d", 0.0)
         self.accelerometer_x_mps2 = Value("d", 0.0)
         self.accelerometer_y_mps2 = Value("d", 0.0)
         self.accelerometer_z_mps2 = Value("d", 0.0)
-        super().__init__(address)
+        super().__init__(address=None)
 
     def _setup(self):
-        pass
+        self._lock.acquire()
+        sleep(1)
+        self._ser.reset_input_buffer()
+        self._ser.reset_output_buffer()
+        self._lock.release()
 
     def _update(self):
+        x, y, z = self.__read_datas()
+
         self.measured_time.value = time()
-        self.accelerometer_x_mps2.value += 1
-        self.accelerometer_y_mps2.value += 1
-        self.accelerometer_z_mps2.value += 1
-        sleep(3)
+        self.accelerometer_x_mps2.value = self.__convert_acceleration(x)
+        self.accelerometer_y_mps2.value = self.__convert_acceleration(y)
+        self.accelerometer_z_mps2.value = self.__convert_acceleration(z)
+
+    def __read_datas(self):
+        self._lock.acquire()
+        self._ser.write(bytes(self._signal, "utf-8"))
+        datas = self._ser.readline()
+        self._lock.release()
+        return datas.decode("utf-8").rstrip().split(",")
+
+    def __convert_acceleration(self, data):
+        return float(data)
 
 
 class TemperatureHumiditySensor(I2CSensorBase):
@@ -320,7 +379,7 @@ class TemperatureHumiditySensor(I2CSensorBase):
         センサーの値を取得してメンバを更新していく並列プロセス
     """
 
-    def __init__(self, address):
+    def __init__(self, address=0x45):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
 
@@ -334,16 +393,32 @@ class TemperatureHumiditySensor(I2CSensorBase):
         self.measured_time = Value("d", 0.0)
         self.temperature_celsius = Value("d", 0.0)
         self.humidity_percent = Value("d", 0.0)
-        super().__init__(address)
+        super().__init__(address=address)
 
     def _setup(self):
-        pass
+        self._bus.write_byte_data(self._address, 0x21, 0x30)
 
     def _update(self):
+        temp, humid = self.__read_datas()
+
         self.measured_time.value = time()
-        self.temperature_celsius.value += 1
-        self.humidity_percent.value += 1
-        sleep(0.5)
+        self.temperature_celsius.value = self.__convert_temperature(temp)
+        self.humidity_percent.value = self.__convert_humidity(humid)
+
+    def __read_datas(self):
+        self._bus.write_byte_data(self._address, 0xE0, 0x00)
+        datas = self._bus.read_i2c_block_data(self._address, 0x00, 6)
+        return (datas[0:2]), (datas[3:5])
+
+    def __convert_temperature(self, data):
+        msb, lsb = data
+        mlsb = ((msb << 8) | lsb)
+        return (-45 + 175 * int(str(mlsb), 10) / (pow(2, 16) - 1))
+
+    def __convert_humidity(self, data):
+        msb, lsb = data
+        mlsb = ((msb << 8) | lsb)
+        return (100 * int(str(mlsb), 10) / (pow(2, 16) - 1))
 
 
 class PulseWaveSensor(I2CSensorBase):
@@ -368,47 +443,58 @@ class PulseWaveSensor(I2CSensorBase):
         センサが値を更新しているか(問題なく動いているか)
     _p : multiprocessing.Process
         センサーの値を取得してメンバを更新していく並列プロセス
+
+    Notes
+    -----
+    外部ライブラリを使うのでアドレスやSMBusは渡さない
     """
 
-    def __init__(self, address):
+    def __init__(self, address=None):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
-
-        Parameters
-        ----------
-        _address : int
-            センサーのi2cアドレス
         """
         self.type = "pulse_wave_sensor"
         self.model_number = "BH1792GLC"
         self.measured_time = Value("d", 0.0)
         self.heart_bpm_fifo_1204hz = Value("d", 0.0)
-        super().__init__(address)
+        super().__init__(address=address)
 
     def _setup(self):
-        pass
+        self._bus.close()
+        self._drv = BH1792GLCDriver()
+        self._drv.reset()
+        self._drv.probe()
 
     def _update(self):
+        beat = self.__read_datas()
+
         self.measured_time.value = time()
-        self.heart_bpm_fifo_1204hz.value += 1
-        sleep(10)
+        self.heart_bpm_fifo_1204hz.value = self.__convert_heartbeat(beat)
+
+    def __read_datas(self):
+        return self._drv.measure_single_get()
+
+    def __convert_heartbeat(self, data):
+        return float(data[0])
 
 
 if __name__ == "__main__":
-    Th1 = Thermistor(0x40)
-    Th2 = Thermistor(0x60)
-    Pr = PressureSensor(0x80)
-    Ac = Accelerometer(0xa1)
-    THs = TemperatureHumiditySensor(0x15)
-    Pw = PulseWaveSensor(0x25)
+    lock = Lock()
+    Th1 = Thermistor(signal="1", lock=lock)
+    Th2 = Thermistor(signal="2", lock=lock)
+    Pr = PressureSensor()
+    Ac = Accelerometer(signal="5", lock=lock)
+    THs = TemperatureHumiditySensor()
+    Pw = PulseWaveSensor()
     while True:
         try:
-            sleep(4)
-            print(Th1.status_dict)
-            print(Th2.status_dict)
-            print(Pr.status_dict)
-            print(Ac.status_dict)
-            print(THs.status_dict)
-            print(Pw.status_dict)
+            sleep(1)
+            print(Th1.status_dict, Th1.is_active)
+            print(Th2.status_dict, Th2.is_active)
+            print(Pr.status_dict, Pr.is_active)
+            print(Ac.status_dict, Ac.is_active)
+            print(THs.status_dict, THs.is_active)
+            print(Pw.status_dict, Pw.is_active)
+            print("-" * 20)
         except KeyboardInterrupt:
             break

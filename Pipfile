@@ -8,6 +8,9 @@ verify_ssl = true
 [packages]
 paho-mqtt = "*"
 smbus2 = "*"
+pyserial = "*"
+rpi = "*"
+rpi-gpio = "*"
 
 [requires]
 python_version = "3.7"

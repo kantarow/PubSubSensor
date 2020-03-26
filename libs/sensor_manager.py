@@ -36,7 +36,7 @@ class SensorManager:
 
 
 if __name__ == '__main__':
-    with SensorManager(PressureSensor(0x00), PressureSensor(0x00)) as sm:
+    with SensorManager(PressureSensor(), TemperatureHumiditySensor()) as sm:
         for i in range(5):
             print(sm.status_dict)
             sleep(1)
