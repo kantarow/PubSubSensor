@@ -43,8 +43,9 @@ if __name__ == '__main__':
         TemperatureHumiditySensor(),
         PulseWaveSensor()
     ]
+    sleep(3)
     with SensorManager(*sensors) as sm:
-        for i in range(5):
+        print(sm.sensors)
+        while all(sm.active_sensors()):
             print(sm.status_dict)
-            print(sm.active_sensors)
             sleep(1)

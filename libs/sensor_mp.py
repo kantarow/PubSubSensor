@@ -30,7 +30,7 @@ class SensorBase(ABC):
             self._setup()
             sleep(1)
         except Exception as e:
-            print(type(e), e)
+            print(type(e), e, "[in setup]")
             self._close()
         else:
             self._p = Process(target=self._process, args=())
@@ -157,6 +157,7 @@ class SerialSensorBase(SensorBase):
         self._ser = Serial("/dev/ttyACM0", 9600)
         self._signal = signal
         self._lock = lock
+        self._retry = 0
         super().__init__()
 
     def _close(self):
@@ -406,16 +407,23 @@ class Thermistor(SerialSensorBase):
 
     def _setup(self):
         self._lock.acquire()
-        sleep(1)
+        sleep(1.5)
         self._ser.reset_input_buffer()
         self._ser.reset_output_buffer()
         self._lock.release()
 
     def _update(self):
+        if self._retry > 3:
+            self._close()
         temp = self.__read_datas()
-
-        self.measured_time.value = time()
-        self.temperature_celsius.value = self.__convert_temperature(temp)
+        try:
+            self.temperature_celsius.value = self.__convert_temperature(temp)
+        except ValueError:
+            self._retry += 1
+            self._update()
+        else:
+            self._retry = 0
+            self.measured_time.value = time()
 
     def __read_datas(self):
         self._lock.acquire()
@@ -479,18 +487,25 @@ class Accelerometer(SerialSensorBase):
 
     def _setup(self):
         self._lock.acquire()
-        sleep(1)
+        sleep(1.5)
         self._ser.reset_input_buffer()
         self._ser.reset_output_buffer()
         self._lock.release()
 
     def _update(self):
+        if self._retry > 3:
+            self._close()
         x, y, z = self.__read_datas()
-
-        self.measured_time.value = time()
-        self.accelerometer_x_mps2.value = self.__convert_acceleration(x)
-        self.accelerometer_y_mps2.value = self.__convert_acceleration(y)
-        self.accelerometer_z_mps2.value = self.__convert_acceleration(z)
+        try:
+            self.accelerometer_x_mps2.value = self.__convert_acceleration(x)
+            self.accelerometer_y_mps2.value = self.__convert_acceleration(y)
+            self.accelerometer_z_mps2.value = self.__convert_acceleration(z)
+        except ValueError:
+            self._retry += 1
+            self._update()
+        else:
+            self._retry = 0
+            self.measured_time.value = time()
 
     def __read_datas(self):
         self._lock.acquire()
