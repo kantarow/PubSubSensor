@@ -56,6 +56,11 @@
 |:-|:-|:-|
 |python|python3|python2系で実行するのを防ぐためです|
 |pip   |pip3   |python2系で実行するのを防ぐためです|
+|gb    |git branch   |よく使うgitコマンドです     |
+|gck   |git checkout  |よく使うgitコマンドです   |
+|gp   |git pull   |よく使うgitコマンドです   |
+|gcm   |git commit -a -m  |よく使うgitコマンドです   |
+|i2c   |i2cdetect -y 1   |I2Cのアドレスの確認です   |
 
 ## 開発環境
 仮想環境の構築に **pipenv** を利用しています。  
