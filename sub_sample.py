@@ -1,5 +1,4 @@
 import paho.mqtt.client as mqtt
-import json
 # クライアントがサーバーからCONNACKを受けとった際に呼ばれるコールバック
 
 
@@ -13,9 +12,7 @@ def on_connect(client, userdata, flags, rc):
 
 
 def on_message(client, userdata, msg):
-    print(type(msg.payload))
-    print(msg.payload)
-    # print(json.dumps(msg.payload, ensure_ascii=False, indent=4, sort_keys=True, separators=(',', ': ')))
+    print(msg.payload.decode("utf-8"))
 
 
 client = mqtt.Client()
