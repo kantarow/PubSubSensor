@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
-from bh1792glc.driver import BH1792GLCDriver
+try:
+    from bh1792glc.driver import BH1792GLCDriver
+except ImportError:
+    from libs.bh1792glc.driver import BH1792GLCDriver
 from ctypes import c_bool
 from multiprocessing import Process, Value, Lock
 from multiprocessing.sharedctypes import Synchronized
