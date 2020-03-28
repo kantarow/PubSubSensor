@@ -1,4 +1,3 @@
-from sensor_mp import Thermistor, PressureSensor, Accelerometer, TemperatureHumiditySensor, PulseWaveSensor
 from time import sleep
 from multiprocessing import Lock
 
@@ -34,6 +33,8 @@ class SensorManager:
 
 
 if __name__ == '__main__':
+    from sensor_mp import Thermistor, PressureSensor, Accelerometer, TemperatureHumiditySensor, PulseWaveSensor
+
     lock = Lock()
     sensors = [
         Thermistor("1", lock),
