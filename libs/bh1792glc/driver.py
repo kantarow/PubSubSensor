@@ -1,8 +1,8 @@
 """
     Driver for BH1792GLC Pulse Sensor
 """
-from bh1792glc import bh1792glc_registers
-from bh1792glc.i2c_interface import i2cInterface
+from libs.bh1792glc import bh1792glc_registers
+from libs.bh1792glc.i2c_interface import i2cInterface
 import logging
 import time
 import RPi.GPIO as GPIO
