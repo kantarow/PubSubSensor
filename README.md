@@ -12,14 +12,15 @@ Raspberry Pi 3B+で複数個のセンサーからセンシングをし、MQTTを
 1. Arduinoで読んでいるセンサーについては、Arduino側で値の処理などをしてからシリアル通信でラズパイに送っています。
 2. Arduino側には温湿度センサーがついていますが、読んでいません(プルアップ抵抗代わりに入れています)
 
-## 回路概要
+## 構成図
 
 ![image1](docs/images/image1.png)
 
 ## クラス図
-
+### センサーを表すクラス
 ![image2](docs/images/image2.png)
-
+### センサーを統括するクラスとセンサーを表すクラスの関係
+![image3](docs/images/image3.png)
 ---
 
 # 開発の方針
