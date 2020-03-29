@@ -1,5 +1,5 @@
 # MQTT-I2C-sensing
-Raspberry Pi 3B+で複数センサーからセンシングをし、MQTTを使ってPublishします。
+Raspberry Pi 3B+で複数個のセンサーからセンシングをし、MQTTを使ってPublishします。
 
 # センサーについて
 ## 概要
