@@ -122,7 +122,18 @@ class SensorBase(ABC):
 
 class I2CSensorBase(SensorBase):
     """
-    I2Cセンサー
+    I2Cセンサーを表すクラス。__init__と_closeをオーバーライドしているため、このクラスを継承したクラスでは_setupと_processのみ実装すればよい
+
+    Attributes
+    ----------
+    _bus : smbus2.SMBus
+        I2Cのバス
+    _address : int
+        センサーのI2C(スレーブ)アドレス
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
+    _p : multiprocessing.Process
+        センサーの値を取得してメンバを更新していく並列プロセス
     """
     def __init__(self, address):
         """
@@ -143,7 +154,22 @@ class I2CSensorBase(SensorBase):
 
 class SerialSensorBase(SensorBase):
     """
-    シリアルセンサー
+    シリアルセンサーを表すクラス。__init__と_closeをオーバーライドしているため、このクラスを継承したクラスでは_setupと_processのみ実装すればよい
+
+    Attributes
+    ----------
+    _ser : serial.Serial
+        シリアル通信の接続
+    _signal : str
+        シリアル通信で送るシグナル
+    _lock : multiprocessing.Lock
+        メモリ保護のためのロック機構
+    _retry : int
+        シリアル通信に失敗した(=リトライした)回数
+    _is_active : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
+        センサが値を更新しているか(問題なく動いているか)
+    _p : multiprocessing.Process
+        センサーの値を取得してメンバを更新していく並列プロセス
     """
     def __init__(self, signal, lock):
         """
@@ -166,6 +192,9 @@ class SerialSensorBase(SensorBase):
         self._is_active.value = False
 
 
+# 以下具象サブクラス
+
+
 class PressureSensor(I2CSensorBase):
     """
     圧力センサーを表すクラス
@@ -183,7 +212,7 @@ class PressureSensor(I2CSensorBase):
     temperature_celsius : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
         摂氏温度[℃]
     altitude_meters : multiprocessing.sharedctypes.Synchronized(ctypes.c_bool)
-        高度[m]
+        推定高度[m]
     _bus : smbus2.SMBus
         i2cのバス
     _address : int
@@ -200,7 +229,7 @@ class PressureSensor(I2CSensorBase):
 
         Parameters
         ----------
-        _address : int
+        _address : int, default 0x5C
             センサーのi2cアドレス
         """
         self.type = "pressure_sensor"
@@ -223,7 +252,7 @@ class PressureSensor(I2CSensorBase):
         self.altitude_meters.value = self.__convert_altitude(self.pressure_hpa.value, self.temperature_celsius.value)
 
     def __read_datas(self):
-        datas = [self._bus.read_byte_data(self._address, 0x28 + i) for i in range(5)]
+        datas = [self._bus.read_byte_data(self._address, 0x28 + i) for i in range(5)]  # [0:3]が気圧、[3:5]が気温のデータ
         return datas[0:3], datas[3:5]
 
     def __convert_pressure(self, data):
@@ -269,7 +298,7 @@ class TemperatureHumiditySensor(I2CSensorBase):
 
         Parameters
         ----------
-        _address : int
+        _address : int, default 0x45
             センサーのi2cアドレス
         """
         self.type = "temperature_humidity_sensor"
@@ -291,7 +320,7 @@ class TemperatureHumiditySensor(I2CSensorBase):
 
     def __read_datas(self):
         self._bus.write_byte_data(self._address, 0xE0, 0x00)
-        datas = self._bus.read_i2c_block_data(self._address, 0x00, 6)
+        datas = self._bus.read_i2c_block_data(self._address, 0x00, 6)  # [0:2]が気温、[3:5]が湿度のデータ
         return (datas[0:2]), (datas[3:5])
 
     def __convert_temperature(self, data):
@@ -333,7 +362,7 @@ class PulseWaveSensor(I2CSensorBase):
     外部ライブラリを使うのでアドレスやSMBusは渡さない
     """
 
-    def __init__(self, address=None):
+    def __init__(self):
         """
         センサ情報を登録してから、セットアップとデータ更新プロセスを開始する
         """
@@ -341,10 +370,10 @@ class PulseWaveSensor(I2CSensorBase):
         self.model_number = "BH1792GLC"
         self.measured_time = Value("d", 0.0)
         self.heart_bpm_fifo_1204hz = Value("d", 0.0)
-        super().__init__(address)
+        super().__init__(None)
 
     def _setup(self):
-        self._bus.close()
+        self._bus.close()  # 接続に外部ライブラリを使っているのでI2Cバスを閉じる
         self._drv = BH1792GLCDriver()
         self._drv.reset()
         self._drv.probe()
@@ -418,7 +447,7 @@ class Thermistor(SerialSensorBase):
         temp = self.__read_datas()
         try:
             self.temperature_celsius.value = self.__convert_temperature(temp)
-        except ValueError:
+        except ValueError:  # シリアルでうまく文字列が受け取れなかった場合、リトライする
             self._retry += 1
             self._update()
         else:
@@ -500,7 +529,7 @@ class Accelerometer(SerialSensorBase):
             self.accelerometer_x_mps2.value = self.__convert_acceleration(x)
             self.accelerometer_y_mps2.value = self.__convert_acceleration(y)
             self.accelerometer_z_mps2.value = self.__convert_acceleration(z)
-        except ValueError:
+        except ValueError:  # シリアルでうまく文字列が受け取れなかった場合、リトライする
             self._retry += 1
             self._update()
         else:
