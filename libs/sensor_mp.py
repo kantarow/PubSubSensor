@@ -1,10 +1,7 @@
 from abc import ABC, abstractmethod
-try:
-    from bh1792glc.driver import BH1792GLCDriver
-except ImportError:
-    from libs.bh1792glc.driver import BH1792GLCDriver
+from libs.bh1792glc.driver import BH1792GLCDriver
 from ctypes import c_bool
-from multiprocessing import Process, Value, Lock
+from multiprocessing import Process, Value
 from multiprocessing.sharedctypes import Synchronized
 from serial import Serial
 from smbus2 import SMBus
