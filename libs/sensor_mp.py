@@ -519,25 +519,3 @@ class Accelerometer(SerialSensorBase):
 
     def __convert_acceleration(self, data):
         return float(data)
-
-
-if __name__ == "__main__":
-    lock = Lock()
-    Th1 = Thermistor("1", lock)
-    Th2 = Thermistor("2", lock)
-    Pr = PressureSensor()
-    Ac = Accelerometer("5", lock)
-    THs = TemperatureHumiditySensor()
-    Pw = PulseWaveSensor()
-    while True:
-        try:
-            sleep(1)
-            print(Th1.status_dict, Th1.is_active)
-            print(Th2.status_dict, Th2.is_active)
-            print(Pr.status_dict, Pr.is_active)
-            print(Ac.status_dict, Ac.is_active)
-            print(THs.status_dict, THs.is_active)
-            print(Pw.status_dict, Pw.is_active)
-            print("-" * 20)
-        except KeyboardInterrupt:
-            break
